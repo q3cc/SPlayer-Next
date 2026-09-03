@@ -52,6 +52,14 @@ body,
   min-height: 100%;
 }
 
+html.mobile,
+html.mobile body,
+html.mobile #app {
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 @media (max-width: 900px), (pointer: coarse) {
   html,
   body {

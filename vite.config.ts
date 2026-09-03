@@ -41,7 +41,12 @@ export default defineConfig({
   build: {
     outDir: "dist-mobile",
     emptyOutDir: true,
-    rollupOptions: { input: resolve(__dirname, "index.html") },
+    // WKWebView 通过 Tauri 自定义协议加载资源。单文件入口避免首屏路由依赖额外动态
+    // chunk 时出现协议/缓存差异，也确保移动桥接一定先于共享应用代码求值。
+    rollupOptions: {
+      input: resolve(__dirname, "index.html"),
+      output: { inlineDynamicImports: true },
+    },
   },
   resolve: {
     alias: [
@@ -72,10 +77,6 @@ export default defineConfig({
     ],
   },
   plugins: [
-    {
-      name: "splayer-mobile-entry",
-      transformIndexHtml: (html) => html.replace("/src/main.ts", "/src/mobile-entry.ts"),
-    },
     nodePolyfills({
       include: ["buffer", "crypto", "events", "process", "stream", "util", "vm", "zlib"],
       globals: { Buffer: true, global: true, process: true },

@@ -95,4 +95,8 @@ const startApp = async (): Promise<void> => {
     .catch((err) => console.error("[hotkey] init failed", err));
 };
 
-void startApp();
+void startApp().catch((error: unknown) => {
+  console.error("[boot] application bootstrap failed", error);
+  window.dispatchEvent(new CustomEvent("splayer:boot-error", { detail: error }));
+  throw error;
+});

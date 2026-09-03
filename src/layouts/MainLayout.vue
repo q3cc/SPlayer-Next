@@ -120,7 +120,7 @@ const playerBarInnerClass = computed(() => {
 <template>
   <!-- 主界面 -->
   <div
-    class="h-screen flex overflow-hidden bg-app text-on-surface transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.7,0,0.3,1)] origin-center"
+    class="app-viewport h-screen flex overflow-hidden bg-app text-on-surface transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.7,0,0.3,1)] origin-center"
     :class="isPlayerExpanded ? 'scale-95 opacity-0 pointer-events-none' : ''"
   >
     <!-- 侧边栏 -->
@@ -195,6 +195,11 @@ const playerBarInnerClass = computed(() => {
 </template>
 
 <style scoped>
+.app-viewport {
+  height: 100vh;
+  height: 100dvh;
+}
+
 .mobile-header {
   height: calc(3.5rem + env(safe-area-inset-top));
   padding-top: env(safe-area-inset-top);
