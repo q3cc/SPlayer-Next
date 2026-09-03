@@ -62,6 +62,14 @@ jobs:
       - name: Generate the Xcode project
         run: pnpm tauri ios init --ci --skip-targets-install
 
+      - name: Install the SPlayer iOS icon set
+        shell: bash
+        run: |
+          set -euo pipefail
+          icon_set="src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset"
+          cp src-tauri/icons/ios/*.png "$icon_set/"
+          cmp src-tauri/icons/ios/AppIcon-512@2x.png "$icon_set/AppIcon-512@2x.png"
+
       - name: Build the unsigned iOS IPA
         run: pnpm tauri ios build --ci --no-sign
 
@@ -100,7 +108,7 @@ jobs:
             exit 1
           fi
 
-          device_id="$(xcrun simctl list devices available | awk -F '[()]' '/iPad/ { print $2; exit }')"
+          device_id="$(xcrun simctl list devices available | sed -nE '/iPad/ s/.*\(([0-9A-F-]{36})\).*/\1/p' | head -1)"
           if [[ -z "$device_id" ]]; then
             echo "No available iPad simulator was found" >&2
             xcrun simctl list devices available
