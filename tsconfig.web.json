@@ -13,6 +13,8 @@
     "tsBuildInfoFile": "node_modules/.cache/tsconfig.web.tsbuildinfo",
     "paths": {
       "@/*": ["./src/*"],
+      "@main/*": ["./electron/main/*"],
+      "@root/*": ["./*"],
       "@shared/*": ["./shared/*"],
       "@windows/*": ["./windows/*"]
     },

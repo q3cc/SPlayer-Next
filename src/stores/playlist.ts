@@ -97,6 +97,7 @@ export const usePlaylistStore = defineStore("playlist", () => {
     const count = await window.api.playlist.addTracks(
       id,
       tracks.map((track) => track.id),
+      tracks,
     );
     if (count > 0) {
       const cover = tracks.find((track) => track.cover)?.cover;

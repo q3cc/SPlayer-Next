@@ -4,7 +4,7 @@
 
 <h2>SPlayer-Next</h2>
 
-<p>🎵 跨平台桌面音乐播放器，支持丰富的歌词展现形式与广泛的音频格式</p>
+<p>🎵 跨平台音乐播放器，支持丰富的歌词展现形式与广泛的音频格式</p>
 
 <p>「<a href="https://github.com/SPlayer-Dev/SPlayer">SPlayer</a>」的继任版本</p>
 
@@ -24,7 +24,7 @@
 - 🎵 **广泛的格式支持** —— MP3、FLAC、WAV、AAC、OGG、APE 等，基于 FFmpeg 解码
 - 📝 **丰富的歌词** —— LRC / QRC / YRC / TTML，逐字高亮与翻译，支持桌面、灵动岛、任务栏歌词窗口
 - 🌐 **流媒体服务** —— Subsonic / Navidrome / Jellyfin / Emby（多服务器、自动连接）
-- 🖥️ **跨平台** —— Windows / macOS / Linux
+- 🖥️ **跨平台** —— Windows / macOS / Linux，以及实验性 iOS / iPadOS 客户端
 - 🎚️ **音乐频谱** —— 实时 FFT 可视化
 - 🏷️ **元信息编辑** —— 编辑本地曲目标签与封面
 - ⬇️ **下载** —— 内置下载管理器
@@ -71,9 +71,13 @@ pnpm build         # 完整构建：清理 → 原生模块 → 类型检查 →
 pnpm build:win     # 打包 Windows
 pnpm build:mac     # 打包 macOS
 pnpm build:linux   # 打包 Linux（AppImage / deb / rpm / tar.gz / pacman）
+
+pnpm ios:build --ci --no-sign  # macOS 上构建未签名 IPA
 ```
 
 > 默认仅构建当前架构，暂不支持交叉编译。
+
+iOS / iPadOS 的未签名 IPA 可在 GitHub Actions 中直接构建，使用及实机签名说明见 [iOS / iPadOS 未签名构建](./docs/ios-unsigned.md)。
 
 ### 其他脚本
 

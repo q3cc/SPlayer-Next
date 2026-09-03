@@ -40,8 +40,8 @@ declare global {
       config: ConfigApi;
       player: PlayerApi;
       system: {
-        installType: "nsis" | "portable" | "appx" | "dmg" | "appimage";
-        platform: NodeJS.Platform;
+        installType: "nsis" | "portable" | "appx" | "dmg" | "appimage" | "ipa";
+        platform: NodeJS.Platform | "ios";
         osInfo: {
           type: string;
           arch: string;

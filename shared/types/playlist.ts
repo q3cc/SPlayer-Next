@@ -52,7 +52,7 @@ export interface PlaylistApi {
   create: (input: PlaylistCreateInput) => Promise<PlaylistSummary>;
   update: (id: string, input: PlaylistUpdateInput) => Promise<PlaylistSummary | null>;
   remove: (id: string) => Promise<void>;
-  addTracks: (id: string, trackIds: string[]) => Promise<number>;
+  addTracks: (id: string, trackIds: string[], tracks?: Track[]) => Promise<number>;
   removeTracks: (id: string, trackIds: string[]) => Promise<number>;
   importLegacy: (records: LegacyPlaylistRecord[]) => Promise<void>;
   clear: () => Promise<void>;

@@ -4,7 +4,7 @@
 
 <h2>SPlayer-Next</h2>
 
-<p>🎵 Cross-platform desktop music player with rich lyric support and wide audio format compatibility.</p>
+<p>🎵 Cross-platform music player with rich lyric support and wide audio format compatibility.</p>
 
 <p>Successor to <a href="https://github.com/SPlayer-Dev/SPlayer">SPlayer</a>.</p>
 
@@ -24,7 +24,7 @@
 - 🎵 **Broad format support** — MP3, FLAC, WAV, AAC, OGG, APE, and more, decoded via FFmpeg
 - 📝 **Rich lyrics** — LRC / QRC / YRC / TTML, word-by-word highlighting and translations, with desktop, dynamic-island, and taskbar lyric windows
 - 🌐 **Streaming servers** — Subsonic / Navidrome / Jellyfin / Emby (multi-server, auto-connect)
-- 🖥️ **Cross-platform** — Windows / macOS / Linux
+- 🖥️ **Cross-platform** — Windows / macOS / Linux, plus experimental iOS / iPadOS support
 - 🎚️ **Audio spectrum** — real-time FFT visualization
 - 🏷️ **Metadata editing** — edit local track tags and cover art
 - ⬇️ **Downloads** — built-in download manager
@@ -71,9 +71,13 @@ pnpm build         # Full build: clean → native → typecheck → electron-vit
 pnpm build:win     # Package for Windows
 pnpm build:mac     # Package for macOS
 pnpm build:linux   # Package for Linux (AppImage / deb / rpm / tar.gz / pacman)
+
+pnpm ios:build --ci --no-sign  # Build an unsigned IPA on macOS
 ```
 
 > By default a build targets the current architecture only. Cross-compilation is not supported.
+
+The unsigned iOS / iPadOS IPA can be built directly with GitHub Actions. See [the iOS build guide](./docs/ios-unsigned.md) for artifact and device-signing details.
 
 ### Other Scripts
 

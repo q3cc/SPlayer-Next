@@ -13,21 +13,50 @@ import localCacheCategory from "./categories/localCache";
 import pluginsCategory from "./categories/plugins";
 import otherCategory from "./categories/other";
 import AboutSettings from "@/components/settings/custom/AboutSettings.vue";
+import { isIOS } from "@/utils/config";
 import IconLucideInfo from "~icons/lucide/info";
 
+const onlySections = (category: SettingCategory, ids: string[]): SettingCategory => ({
+  ...category,
+  sections: category.sections?.filter((section) => ids.includes(section.id)),
+});
+
+const mobileGeneral = onlySections(generalCategory, ["language", "update", "debug", "backupReset"]);
+const mobileAppearance = onlySections(appearanceCategory, [
+  "theme",
+  "appearanceStyle",
+  "playerBar",
+  "nowPlaying",
+]);
+const mobilePlayer: SettingCategory = {
+  ...onlySections(playerCategory, ["playControl", "audioSource", "scrobble"]),
+  sections: playerCategory.sections
+    ?.filter((section) => ["playControl", "audioSource", "scrobble"].includes(section.id))
+    .map((section) =>
+      section.id === "playControl"
+        ? {
+            ...section,
+            items: section.items.filter((item) =>
+              ["autoPlay", "rememberLastTrack"].includes(item.key),
+            ),
+          }
+        : section,
+    ),
+};
+const mobileServices = onlySections(servicesCategory, ["network", "media"]);
+const mobileDownload = onlySections(downloadCategory, ["downloadGeneral"]);
+
 export const settingsSchema: SettingCategory[] = [
-  generalCategory,
-  appearanceCategory,
-  playerCategory,
+  isIOS ? mobileGeneral : generalCategory,
+  isIOS ? mobileAppearance : appearanceCategory,
+  isIOS ? mobilePlayer : playerCategory,
   lyricCategory,
-  externalLyricCategory,
-  hotkeysCategory,
-  servicesCategory,
-  aiIntegrationCategory,
+  ...(isIOS ? [] : [externalLyricCategory, hotkeysCategory]),
+  isIOS ? mobileServices : servicesCategory,
+  ...(isIOS ? [] : [aiIntegrationCategory]),
   mediaSourceCategory,
-  downloadCategory,
-  localCacheCategory,
-  pluginsCategory,
+  isIOS ? mobileDownload : downloadCategory,
+  ...(isIOS ? [] : [localCacheCategory, pluginsCategory]),
   otherCategory,
   { id: "about", icon: IconLucideInfo, component: AboutSettings },
 ];

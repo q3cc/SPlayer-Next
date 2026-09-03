@@ -18,6 +18,7 @@ const media = useMediaStore();
 const fav = useFavorite();
 const { position, duration } = storeToRefs(status);
 const { formatTooltip, snapToNearestLyric } = useProgressLyric();
+const isCompactLayout = useMediaQuery("(max-width: 900px)");
 
 /** 是否是浮动模式 */
 const isFloating = computed(() => settings.appearance.layoutMode === "floating");
@@ -47,8 +48,34 @@ const { items: menuItems, handleSelect: onMenuSelect } = useTrackMenu(toRef(medi
 </script>
 
 <template>
+  <!-- iPhone / iPad 紧凑播放栏 -->
+  <div
+    v-if="isCompactLayout"
+    class="relative grid h-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3"
+    @click="status.isPlayerExpanded = true"
+  >
+    <div class="min-w-0">
+      <TrackInfo compact />
+    </div>
+    <div class="shrink-0" @click.stop>
+      <PlayerControls compact />
+    </div>
+    <div class="absolute inset-x-0 top-0 -translate-y-1/2 z-10" @click.stop>
+      <SSlider
+        :model-value="position"
+        :min="0"
+        :max="duration"
+        :step="100"
+        :track-height="3"
+        :thumb-size="10"
+        :always-show-thumb="false"
+        :show-popover="false"
+        @drag-end="onSeekDragEnd"
+      />
+    </div>
+  </div>
   <!-- 浮动模式 -->
-  <div v-if="isFloating" class="relative flex items-center px-4 gap-4 min-w-0">
+  <div v-else-if="isFloating" class="relative flex items-center px-4 gap-4 min-w-0">
     <PlayerControls compact />
     <div class="flex flex-col flex-1 min-w-0 gap-1 pt-2 pb-1">
       <div class="flex items-center gap-2 min-w-0">

@@ -7,6 +7,7 @@ import { songsByIds as getNeteaseSongsByIds } from "@/apis/song/netease";
 import { formatCompact } from "@/utils/format";
 import { navigateToAlbum, navigateToArtist, navigateToPlaylist } from "@/utils/navigate";
 import { parseMusicLink, type LinkType } from "@/utils/link";
+import { isIOS } from "@/utils/config";
 import type { TrackSource } from "@shared/types/player";
 import * as player from "@/core/player";
 import IconLucideMusic from "~icons/lucide/music";
@@ -280,7 +281,7 @@ onMounted(() => {
     <div
       role="button"
       :aria-label="t('nav.searchPlaceholder')"
-      class="app-no-drag w-60 h-10 px-4 cursor-pointer flex items-center gap-2 rounded-full border border-solid bg-on-surface/3 border-on-surface/15 hover:bg-on-surface/10 hover:border-on-surface/25 transition-colors duration-250 select-none"
+      class="mobile-search-trigger app-no-drag w-60 h-10 px-4 cursor-pointer flex items-center gap-2 rounded-full border border-solid bg-on-surface/3 border-on-surface/15 hover:bg-on-surface/10 hover:border-on-surface/25 transition-colors duration-250 select-none"
       @click="dialogOpen = true"
       @contextmenu.prevent="dialogOpen = true"
       @mousedown.prevent
@@ -291,6 +292,7 @@ onMounted(() => {
       </span>
     </div>
     <SButton
+      v-if="!isIOS"
       class="app-no-drag shrink-0"
       variant="tertiary"
       circle
@@ -461,3 +463,18 @@ onMounted(() => {
     </div>
   </SDialog>
 </template>
+
+<style scoped>
+@media (max-width: 900px) {
+  .mobile-search-trigger {
+    width: 2.5rem;
+    justify-content: center;
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .mobile-search-trigger span {
+    display: none;
+  }
+}
+</style>

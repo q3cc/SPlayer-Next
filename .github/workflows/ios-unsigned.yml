@@ -1,0 +1,95 @@
+name: Build unsigned iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/ios-ipados
+    paths:
+      - ".github/workflows/ios-unsigned.yml"
+      - "src/**"
+      - "src-tauri/**"
+      - "shared/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.ts"
+      - "uno.config.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-unsigned-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ipa:
+    name: iPhone and iPad unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the unsigned iOS IPA
+        run: pnpm tauri ios build --ci --no-sign
+
+      - name: Collect unsigned IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ipa_path="$(find src-tauri -type f -name '*.ipa' -print -quit)"
+          if [[ -z "$ipa_path" ]]; then
+            echo "Tauri did not produce an IPA" >&2
+            exit 1
+          fi
+          cp "$ipa_path" SPlayer-Next-iOS-unsigned.ipa
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPlayer-Next-iOS-unsigned-${{ github.sha }}
+          path: SPlayer-Next-iOS-unsigned.ipa
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Upload raw application bundle for diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPlayer-Next-iOS-build-logs-${{ github.sha }}
+          path: |
+            src-tauri/gen/apple
+            src-tauri/target/**/release/bundle
+          if-no-files-found: ignore
+          retention-days: 7

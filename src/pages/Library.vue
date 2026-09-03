@@ -107,9 +107,9 @@ onUnmounted(() => {
 <template>
   <div class="flex flex-col h-full">
     <!-- 顶栏 -->
-    <div class="shrink-0 px-5 pb-2">
+    <div class="shrink-0 px-3 pb-2 sm:px-5">
       <div class="flex items-center justify-between mt-2 mb-4">
-        <div class="flex items-baseline gap-4">
+        <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <h1 class="text-3xl font-bold text-on-surface text-balance">{{ t("library.title") }}</h1>
           <!-- 统计或进度 -->
           <Transition name="fade" mode="out-in">
@@ -146,7 +146,7 @@ onUnmounted(() => {
           </Transition>
         </div>
       </div>
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
           <SButton
             type="primary"
@@ -185,7 +185,7 @@ onUnmounted(() => {
           :placeholder="t('common.search')"
           clearable
           round
-          class="w-40 focus-within:w-56"
+          class="min-w-32 flex-1 sm:w-40 sm:flex-none sm:focus-within:w-56"
           data-search-input
         >
           <template #prefix>

@@ -191,8 +191,8 @@ const isEmptyResult = computed(() => {
 <template>
   <div class="flex flex-col h-full">
     <!-- 顶栏 -->
-    <div class="shrink-0 px-5 pb-2">
-      <div class="mt-2 mb-4 flex items-end justify-between gap-4">
+    <div class="shrink-0 px-3 pb-2 sm:px-5">
+      <div class="mt-2 mb-4 flex flex-wrap items-end justify-between gap-3">
         <h1 class="min-w-0 flex items-baseline pr-3">
           <span class="min-w-0 truncate text-3xl font-bold text-on-surface">
             {{ keyword || t("search.title") }}

@@ -79,7 +79,7 @@ const openAlbum = (item: CoverItem): void => {
 <template>
   <div class="h-full overflow-y-auto">
     <div
-      class="mx-auto flex max-w-[1400px] flex-col gap-6 px-6 pt-6"
+      class="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 pt-4 sm:px-6 sm:pt-6"
       :class="isFloatingBar ? 'pb-28' : 'pb-10'"
     >
       <!-- 问候 -->
@@ -88,7 +88,7 @@ const openAlbum = (item: CoverItem): void => {
           <h1 class="text-3xl font-bold text-on-surface text-balance">{{ greetingTitle }}</h1>
           <p class="mt-2 text-sm text-on-surface-variant/70">{{ greetingSub }}</p>
         </div>
-        <div class="shrink-0 flex items-center gap-6">
+        <div class="hidden shrink-0 items-center gap-6 sm:flex">
           <div v-for="stat in headerStats" :key="stat.label" class="text-right">
             <div class="flex items-baseline justify-end gap-0.5">
               <span class="text-2xl font-bold text-on-surface tabular-nums">{{ stat.value }}</span>
@@ -126,7 +126,7 @@ const openAlbum = (item: CoverItem): void => {
           <!-- 队列预览 -->
           <ul
             v-if="heroPreview.length > 0"
-            class="w-100 shrink-0 flex-col border-l border-on-surface/8 pl-4 lg:flex"
+            class="hidden w-100 shrink-0 flex-col border-l border-on-surface/8 pl-4 lg:flex"
           >
             <li
               v-for="(track, index) in heroPreview"
@@ -145,7 +145,7 @@ const openAlbum = (item: CoverItem): void => {
         </div>
       </SCard>
       <!-- 快捷入口 -->
-      <section class="grid grid-cols-4 gap-3">
+      <section class="grid grid-cols-2 gap-3 md:grid-cols-4">
         <SCard
           v-for="action in quickActions"
           :key="action.title"
@@ -173,7 +173,10 @@ const openAlbum = (item: CoverItem): void => {
             {{ continueSubtitle }}
           </p>
         </div>
-        <div v-if="continueItems.length > 0" class="grid grid-cols-3 gap-3">
+        <div
+          v-if="continueItems.length > 0"
+          class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+        >
           <SCard
             v-for="(item, index) in continueItems"
             :key="`${item.track.source}:${item.track.id}`"

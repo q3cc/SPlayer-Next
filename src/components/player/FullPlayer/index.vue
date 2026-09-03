@@ -25,6 +25,7 @@ import IconLucideDownload from "~icons/lucide/download";
 const status = useStatusStore();
 const media = useMediaStore();
 const settings = useSettingsStore();
+const isCompactLayout = useMediaQuery("(max-width: 900px)");
 const fav = useFavorite();
 const { enqueue: enqueueDownload } = useDownload();
 const { t } = useI18n();
@@ -230,11 +231,24 @@ const showComments = (): void => {
         <!-- 顶栏 -->
         <div
           class="absolute top-0 inset-x-0 h-14 z-10 app-drag-region transition-opacity duration-400 flex items-center justify-between px-3"
-          :class="immersive ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+          :class="[
+            immersive ? 'opacity-0 pointer-events-none' : 'opacity-100',
+            isCompactLayout ? 'mobile-full-player-header' : '',
+          ]"
           @mouseenter="onBarEnter"
           @mouseleave="onBarLeave"
         >
           <div class="app-no-drag flex items-center gap-2">
+            <SButton
+              v-if="isCompactLayout"
+              type="cover"
+              variant="ghost"
+              circle
+              :size="40"
+              @click="collapse"
+            >
+              <template #icon><IconLucideChevronDown /></template>
+            </SButton>
             <SButton
               type="cover"
               variant="ghost"
@@ -247,7 +261,7 @@ const showComments = (): void => {
               <template #icon><IconLucideTextQuote /></template>
             </SButton>
           </div>
-          <div class="app-no-drag flex items-center gap-3">
+          <div v-if="!isCompactLayout" class="app-no-drag flex items-center gap-3">
             <SButton type="cover" variant="ghost" circle :size="40" @click="toggleFullscreen">
               <template #icon>
                 <IconLucideMinimize v-if="isFullscreen" />
@@ -258,14 +272,25 @@ const showComments = (): void => {
           </div>
         </div>
         <!-- 主区域 -->
-        <div class="absolute top-14 inset-x-0 bottom-20" @mousemove="onMainMove">
+        <div
+          class="absolute top-14 inset-x-0"
+          :class="[isCompactLayout ? 'bottom-34 mobile-full-player-main' : 'bottom-20']"
+          @mousemove="onMainMove"
+        >
           <!-- 左侧 -->
           <div
-            v-if="!fullscreenCover"
+            v-if="!fullscreenCover || isCompactLayout"
             class="absolute inset-y-0 left-0 flex items-center justify-center px-12 transition-transform duration-600 ease-[cubic-bezier(0.4,0,0.2,1)]"
+            :class="[
+              isCompactLayout ? 'mobile-cover-panel px-8' : '',
+              isCompactLayout && (showLyric || status.fullQueueOpen)
+                ? 'opacity-0 pointer-events-none'
+                : 'opacity-100',
+            ]"
             :style="{
-              width: coverWidth,
-              transform: coverCentered ? 'translateX(calc(50vw - 50%))' : undefined,
+              width: isCompactLayout ? '100%' : coverWidth,
+              transform:
+                !isCompactLayout && coverCentered ? 'translateX(calc(50vw - 50%))' : undefined,
             }"
           >
             <div class="relative w-[clamp(200px,85%,50vh)] -translate-y-[11vh]">
@@ -282,12 +307,27 @@ const showComments = (): void => {
           <!-- 右侧 -->
           <div
             class="group absolute inset-y-0 right-0 pr-20 flex flex-col transition-opacity duration-600 ease-[cubic-bezier(0.4,0,0.2,1)]"
-            :class="coverCentered || status.fullQueueOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'"
-            :style="{ width: fullscreenCover ? '50%' : `calc(100% - ${coverWidth})` }"
+            :class="[
+              isCompactLayout ? 'mobile-lyric-panel px-5' : '',
+              isCompactLayout
+                ? !showLyric || status.fullQueueOpen
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100'
+                : coverCentered || status.fullQueueOpen
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100',
+            ]"
+            :style="{
+              width: isCompactLayout
+                ? '100%'
+                : fullscreenCover
+                  ? '50%'
+                  : `calc(100% - ${coverWidth})`,
+            }"
           >
             <!-- 全屏封面 -->
             <div
-              v-if="fullscreenCover"
+              v-if="fullscreenCover && !isCompactLayout"
               class="shrink-0 pt-2 pb-6 pl-[calc(1em-0.5rem)]"
               :style="{ fontSize: lyricFontSize }"
             >
@@ -385,7 +425,13 @@ const showComments = (): void => {
           <div
             class="absolute inset-y-0 right-0 pl-4 py-6 flex items-center"
             :class="status.fullQueueOpen ? '' : 'pointer-events-none'"
-            :style="{ width: fullscreenCover ? '50%' : `calc(100% - ${coverWidth})` }"
+            :style="{
+              width: isCompactLayout
+                ? '100%'
+                : fullscreenCover
+                  ? '50%'
+                  : `calc(100% - ${coverWidth})`,
+            }"
           >
             <Transition
               enter-active-class="transition-opacity duration-600 ease-[cubic-bezier(0.4,0,0.2,1)]"
@@ -401,6 +447,7 @@ const showComments = (): void => {
         </div>
         <!-- 底栏 -->
         <div
+          v-if="!isCompactLayout"
           class="absolute bottom-0 inset-x-0 h-20 z-10 flex items-center gap-4 px-4 transition-opacity duration-400"
           :class="immersive ? 'opacity-0 pointer-events-none' : 'opacity-100'"
           @mouseenter="onBarEnter"
@@ -559,6 +606,65 @@ const showComments = (): void => {
             <Toolbar cover />
           </div>
         </div>
+        <div
+          v-else
+          class="mobile-full-player-controls absolute inset-x-0 bottom-0 z-10 flex flex-col gap-3 px-5 pt-2"
+        >
+          <div class="flex items-center gap-2 w-full">
+            <span class="w-10 text-center text-xs text-cover/60 tabular-nums">
+              {{ timeDisplay[0] }}
+            </span>
+            <SSlider
+              :model-value="position"
+              :min="0"
+              :max="duration"
+              :step="100"
+              :always-show-thumb="false"
+              cover
+              class="flex-1"
+              @drag-end="onSeekDragEnd"
+            />
+            <span class="w-10 text-center text-xs text-cover/60 tabular-nums">
+              {{ timeDisplay[1] }}
+            </span>
+          </div>
+          <div class="flex items-center justify-center gap-3">
+            <SButton
+              type="cover"
+              variant="ghost"
+              circle
+              :disabled="!hasTrack || fmMode"
+              @click="player.prevTrack()"
+            >
+              <template #icon><IconLucideSkipBack /></template>
+            </SButton>
+            <SButton
+              type="cover"
+              variant="secondary"
+              size="large"
+              circle
+              :loading="isLoading"
+              :disabled="!hasTrack && !isLoading"
+              @click="player.togglePlay()"
+            >
+              <template #icon>
+                <SIconSwap :active="isPlaying">
+                  <template #on><IconLucidePause /></template>
+                  <template #off><IconLucidePlay /></template>
+                </SIconSwap>
+              </template>
+            </SButton>
+            <SButton
+              type="cover"
+              variant="ghost"
+              circle
+              :disabled="!hasTrack"
+              @click="player.nextTrack()"
+            >
+              <template #icon><IconLucideSkipForward /></template>
+            </SButton>
+          </div>
+        </div>
       </div>
     </Transition>
     <PlaylistPickerDialog v-model:open="pickerOpen" :mode="pickerMode" :tracks="pickerTracks" />
@@ -566,6 +672,24 @@ const showComments = (): void => {
 </template>
 
 <style scoped>
+.mobile-full-player-controls {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.mobile-full-player-header {
+  height: calc(3.5rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-full-player-main {
+  top: calc(3.5rem + env(safe-area-inset-top));
+}
+
+.mobile-cover-panel > div {
+  width: min(78vw, 52vh);
+  transform: translateY(-4vh);
+}
+
 .lyric-area {
   filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
   mask: linear-gradient(

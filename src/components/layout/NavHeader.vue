@@ -3,6 +3,7 @@ import { useSettingsDialog } from "@/settings/useSettingsDialog";
 import { useWindowControls } from "@/composables/useWindowControls";
 import { useThemeStore } from "@/stores/theme";
 import { useUpdateStore } from "@/stores/update";
+import { isIOS } from "@/utils/config";
 import type { DropdownMenuItem } from "@/components/ui/SDropdownMenu.vue";
 import IconSun from "~icons/lucide/sun";
 import IconMoon from "~icons/lucide/moon";
@@ -34,18 +35,21 @@ const themeLabel = computed(() => {
   return t("settings.themeMode.light");
 });
 
-const menuItems = computed<DropdownMenuItem[]>(() => [
-  {
-    key: "theme",
-    label: themeLabel.value,
-    icon: themeIcon.value,
-    disabled: theme.appearanceStyle === "image",
-  },
-  { key: "uiZoom", label: t("uiZoom.title"), icon: IconScaling },
-  { key: "reload", label: t("nav.reload"), icon: IconRefreshCw, separator: true },
-  { key: "devtools", label: t("nav.devtools"), icon: IconTerminal },
-  { key: "settings", label: t("nav.globalSettings"), icon: IconSettings },
-]);
+const menuItems = computed<DropdownMenuItem[]>(() => {
+  const items: DropdownMenuItem[] = [
+    {
+      key: "theme",
+      label: themeLabel.value,
+      icon: themeIcon.value,
+      disabled: theme.appearanceStyle === "image",
+    },
+  ];
+  if (!isIOS) items.push({ key: "uiZoom", label: t("uiZoom.title"), icon: IconScaling });
+  items.push({ key: "reload", label: t("nav.reload"), icon: IconRefreshCw, separator: true });
+  if (!isIOS) items.push({ key: "devtools", label: t("nav.devtools"), icon: IconTerminal });
+  items.push({ key: "settings", label: t("nav.globalSettings"), icon: IconSettings });
+  return items;
+});
 
 const onMenuSelect = (key: string): void => {
   if (key === "theme") theme.cycleMode();
@@ -71,6 +75,7 @@ const onMenuSelect = (key: string): void => {
         <template #icon><IconLucideChevronLeft /></template>
       </SButton>
       <SButton
+        v-if="!isIOS"
         class="app-no-drag shrink-0"
         variant="tertiary"
         circle
@@ -106,8 +111,8 @@ const onMenuSelect = (key: string): void => {
           </SButton>
         </template>
       </SDropdownMenu>
-      <SDivider v-if="isBorderless" vertical />
-      <WindowControls />
+      <SDivider v-if="!isIOS && isBorderless" vertical />
+      <WindowControls v-if="!isIOS" />
     </div>
     <UiZoomDialog v-model:open="uiZoomOpen" />
   </div>

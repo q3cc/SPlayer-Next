@@ -45,6 +45,39 @@ body {
   font-family: var(--user-font, var(--app-font));
 }
 
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  html.mobile [role="dialog"],
+  html.mobile [role="alertdialog"] {
+    width: calc(100vw - 1rem) !important;
+    max-width: none !important;
+    max-height: calc(
+      100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem
+    ) !important;
+  }
+}
+
 /* 主区域容器 */
 .bg-app {
   background-color: var(--s-app-bg);

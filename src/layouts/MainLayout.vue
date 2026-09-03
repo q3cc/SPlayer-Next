@@ -8,6 +8,7 @@ import { useExternalFileHandler } from "@/composables/useExternalFileHandler";
 const route = useRoute();
 const status = useStatusStore();
 const settings = useSettingsStore();
+const isCompactLayout = useMediaQuery("(max-width: 900px)");
 
 // 接入 orpheus 协议唤起与外部音频文件播放
 useOrpheusProtocol();
@@ -81,12 +82,15 @@ const sidebarClass = computed(() => {
 
 /** 主界面底部边距 */
 const mainMarginClass = computed(() =>
-  showPlayerBar.value && appearance.layoutMode !== "floating" ? "mb-20" : "",
+  !isCompactLayout.value && showPlayerBar.value && appearance.layoutMode !== "floating"
+    ? "mb-20"
+    : "",
 );
 
 /** 外层播放条样式 */
 const playerBarWrapperClass = computed(() => {
   const base = "fixed bottom-0 z-50 transition-[left] duration-300 pointer-events-none";
+  if (isCompactLayout.value) return `${base} mobile-player-wrapper left-0 right-0`;
   const collapsed = appearance.sidebarCollapsed;
   switch (appearance.layoutMode) {
     case "sidebar-full":
@@ -102,6 +106,8 @@ const playerBarWrapperClass = computed(() => {
 const playerBarInnerClass = computed(() => {
   // 禁用底部播放栏交互
   const base = isPlayerExpanded.value ? "pointer-events-none" : "pointer-events-auto";
+  if (isCompactLayout.value)
+    return `${base} mobile-player-inner bg-surface-panel border-t border-t-solid border-t-primary/10`;
   switch (appearance.layoutMode) {
     case "floating":
       return `${base} mx-auto max-w-4xl glass-panel rounded-full shadow-xl border border-solid border-primary/10`;
@@ -119,6 +125,7 @@ const playerBarInnerClass = computed(() => {
   >
     <!-- 侧边栏 -->
     <aside
+      v-if="!isCompactLayout"
       class="shrink-0 bg-surface-panel overflow-y-auto z-10 transition-[width,margin] duration-300"
       :class="[appearance.sidebarCollapsed ? 'w-16' : 'w-60', sidebarClass]"
     >
@@ -126,9 +133,19 @@ const playerBarInnerClass = computed(() => {
     </aside>
 
     <!-- 右侧主区域 -->
-    <div class="flex-1 flex flex-col min-w-0" :class="mainMarginClass">
+    <div
+      class="flex-1 flex flex-col min-w-0"
+      :class="[
+        mainMarginClass,
+        isCompactLayout ? 'mobile-main-shell' : '',
+        isCompactLayout && showPlayerBar ? 'has-player' : '',
+      ]"
+    >
       <!-- 顶部导航 -->
-      <header class="h-16 shrink-0 flex items-center px-3">
+      <header
+        class="h-16 shrink-0 flex items-center px-3"
+        :class="isCompactLayout ? 'mobile-header' : ''"
+      >
         <NavHeader />
       </header>
 
@@ -159,6 +176,8 @@ const playerBarInnerClass = computed(() => {
     </div>
   </Transition>
 
+  <MobileNav v-if="isCompactLayout && !isPlayerExpanded" />
+
   <!-- Toast -->
   <SToast :max="1" />
   <!-- 性能监视器 -->
@@ -174,3 +193,26 @@ const playerBarInnerClass = computed(() => {
   <!-- 评论弹窗 -->
   <MusicCommentsDialog />
 </template>
+
+<style scoped>
+.mobile-header {
+  height: calc(3.5rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
+.mobile-main-shell {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+.mobile-main-shell.has-player {
+  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+}
+
+.mobile-player-wrapper {
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+.mobile-player-inner {
+  height: 4.5rem;
+}
+</style>

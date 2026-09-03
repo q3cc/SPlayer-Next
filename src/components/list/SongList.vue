@@ -86,6 +86,7 @@ const settings = useSettingsStore();
 const fav = useFavorite();
 
 const { isFloatingBar: isFloatingPlayerBar, PLAYER_BAR_GAP } = useFloatingPlayerBar();
+const isCompactLayout = useMediaQuery("(max-width: 900px)");
 
 /** 排序器 默认使用 base 敏感度，忽略大小写 */
 const textCollator = new Intl.Collator(undefined, {
@@ -486,12 +487,16 @@ defineExpose({
                   {{ t("songList.title") }}
                 </div>
               </div>
-              <div v-if="showAlbum" class="flex-1 min-w-0">{{ t("songList.album") }}</div>
+              <div v-if="showAlbum && !isCompactLayout" class="flex-1 min-w-0">
+                {{ t("songList.album") }}
+              </div>
               <div class="w-7 shrink-0 text-center">{{ t("songList.actions") }}</div>
-              <div v-if="showDuration" class="w-16 shrink-0 text-center">
+              <div v-if="showDuration && !isCompactLayout" class="w-16 shrink-0 text-center">
                 {{ t("songList.duration") }}
               </div>
-              <div v-if="showSize" class="w-16 shrink-0 text-center">{{ t("songList.size") }}</div>
+              <div v-if="showSize && !isCompactLayout" class="w-16 shrink-0 text-center">
+                {{ t("songList.size") }}
+              </div>
             </div>
           </div>
         </template>
@@ -500,7 +505,7 @@ defineExpose({
           <div class="px-3 pb-3">
             <div
               data-song-item
-              class="group flex items-center gap-3 pl-3 pr-6 h-19 rounded-xl cursor-pointer border-2 border-solid transition-[background-color,border-color] duration-200"
+              class="group flex items-center gap-2 pl-2 pr-3 h-19 rounded-xl cursor-pointer border-2 border-solid transition-[background-color,border-color] duration-200 sm:gap-3 sm:pl-3 sm:pr-6"
               :class="
                 batch.active.value
                   ? batch.selectedIds.value.has(item.id)
@@ -510,11 +515,19 @@ defineExpose({
                     ? 'bg-primary/16 border-primary/40'
                     : 'bg-surface-panel border-primary/12 hover:border-primary/30 hover:bg-on-surface/8 active:bg-on-surface/12'
               "
-              @click="batch.active.value ? batch.toggle(item.id) : undefined"
+              @click="
+                batch.active.value
+                  ? batch.toggle(item.id)
+                  : isCompactLayout
+                    ? player.playFrom(sortedItems, index, props.playbackContext)
+                    : undefined
+              "
               @dblclick="
                 batch.active.value
                   ? undefined
-                  : player.playFrom(sortedItems, index, props.playbackContext)
+                  : isCompactLayout
+                    ? undefined
+                    : player.playFrom(sortedItems, index, props.playbackContext)
               "
               @contextmenu="contextTrack = item"
             >
@@ -647,7 +660,7 @@ defineExpose({
               </div>
               <!-- 专辑 -->
               <div
-                v-if="showAlbum"
+                v-if="showAlbum && !isCompactLayout"
                 class="flex-1 min-w-0 truncate text-sm"
                 :class="playingId === item.id ? 'text-primary/70' : 'text-on-surface'"
               >
@@ -684,7 +697,7 @@ defineExpose({
               <div v-else class="w-7 shrink-0" />
               <!-- 时长 -->
               <div
-                v-if="showDuration"
+                v-if="showDuration && !isCompactLayout"
                 class="w-16 shrink-0 text-center text-sm tabular-nums"
                 :class="playingId === item.id ? 'text-primary/60' : 'text-on-surface-variant'"
               >
@@ -692,7 +705,7 @@ defineExpose({
               </div>
               <!-- 文件大小 -->
               <div
-                v-if="showSize"
+                v-if="showSize && !isCompactLayout"
                 class="w-16 shrink-0 text-center text-sm tabular-nums"
                 :class="playingId === item.id ? 'text-primary/60' : 'text-on-surface-variant'"
               >

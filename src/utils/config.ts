@@ -9,6 +9,8 @@ export const isWin = platform === "win32";
 export const isMac = platform === "darwin";
 /** 是否为 Linux 系统 */
 export const isLinux = platform === "linux";
+/** 是否为 iOS / iPadOS 移动端 */
+export const isIOS = platform === "ios";
 
 /** 应用版本号 */
 export const APP_VERSION = __APP_VERSION__;

@@ -10,7 +10,7 @@ import type {
   PluginMatchCoverArgs,
 } from "@shared/types/plugin";
 import type { HotkeyActionId, HotkeyBinding, HotkeyConflict } from "@shared/types/hotkey";
-import type { LoadOptions, TrackSource } from "@shared/types/player";
+import type { LoadOptions, Track, TrackSource } from "@shared/types/player";
 import type { StreamingServerInput } from "@shared/types/streaming";
 import type { RecognitionConfig, RecognitionEvent } from "@shared/types/recognition";
 import type { PlayEventInput, FavoriteEventInput } from "@shared/types/stats";
@@ -242,7 +242,7 @@ const api = {
     update: (id: string, input: PlaylistUpdateInput) =>
       ipcRenderer.invoke("playlist:update", id, input),
     remove: (id: string) => ipcRenderer.invoke("playlist:remove", id),
-    addTracks: (id: string, trackIds: string[]) =>
+    addTracks: (id: string, trackIds: string[], _tracks?: Track[]) =>
       ipcRenderer.invoke("playlist:addTracks", id, trackIds),
     removeTracks: (id: string, trackIds: string[]) =>
       ipcRenderer.invoke("playlist:removeTracks", id, trackIds),
