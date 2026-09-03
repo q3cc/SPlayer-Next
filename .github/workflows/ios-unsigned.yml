@@ -59,6 +59,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate the Xcode project
+        run: pnpm tauri ios init --ci --skip-targets-install
+
       - name: Build the unsigned iOS IPA
         run: pnpm tauri ios build --ci --no-sign
 
