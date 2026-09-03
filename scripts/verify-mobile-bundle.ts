@@ -18,16 +18,14 @@ const scripts = fs
   .filter((name) => name.endsWith(".js"))
   .map((name) => path.join(assetsPath, name));
 
-if (scripts.length !== 1) {
-  fail(`期望单个内联 JS bundle，实际发现 ${scripts.length} 个`);
-}
+if (scripts.length < 2) fail("移动 bundle 未分包，可能再次阻塞 iPad 主线程");
 
 const html = fs.readFileSync(indexPath, "utf8");
-const javascript = fs.readFileSync(scripts[0], "utf8");
+const javascript = scripts.map((file) => fs.readFileSync(file, "utf8")).join("\n");
 
 if (!html.includes("viewport-fit=cover")) fail("缺少 iOS 全屏 viewport-fit=cover");
 if (!html.includes('class="splash-logo"')) fail("缺少内联启动 Logo");
 if (!javascript.includes("splayer.mobile.settings")) fail("移动端 window.api 桥接未进入 bundle");
 if (!javascript.includes("iPhone / iPad")) fail("移动播放器实现未进入 bundle");
 
-console.log(`[VerifyMobileBundle] 通过：${path.basename(scripts[0])} 包含移动桥接及 iPad 全屏配置`);
+console.log(`[VerifyMobileBundle] 通过：${scripts.length} 个 JS 分包包含移动桥接及 iPad 全屏配置`);

@@ -41,12 +41,7 @@ export default defineConfig({
   build: {
     outDir: "dist-mobile",
     emptyOutDir: true,
-    // WKWebView 通过 Tauri 自定义协议加载资源。单文件入口避免首屏路由依赖额外动态
-    // chunk 时出现协议/缓存差异，也确保移动桥接一定先于共享应用代码求值。
-    rollupOptions: {
-      input: resolve(__dirname, "index.html"),
-      output: { inlineDynamicImports: true },
-    },
+    rollupOptions: { input: resolve(__dirname, "index.html") },
   },
   resolve: {
     alias: [

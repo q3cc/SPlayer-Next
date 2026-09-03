@@ -23,8 +23,9 @@ const showBootError = (reason: unknown): void => {
   root.querySelector(".splash")?.append(retry);
 };
 
-window.addEventListener("error", (event) => showBootError(event.error ?? event.message));
-window.addEventListener("unhandledrejection", (event) => showBootError(event.reason));
+window.addEventListener("splayer:boot-error", (event) => {
+  showBootError((event as CustomEvent<unknown>).detail);
+});
 
 const boot = async (): Promise<void> => {
   // 桌面共享模块会在求值时同步读取 window.api，移动桥接必须先完成安装。

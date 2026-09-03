@@ -13,12 +13,8 @@
     "windows": [
       {
         "title": "SPlayer Next",
-        "width": 1180,
-        "height": 760,
-        "minWidth": 320,
-        "minHeight": 568,
-        "resizable": true,
-        "fullscreen": false
+        "fullscreen": true,
+        "backgroundColor": "#101014"
       }
     ],
     "security": {
