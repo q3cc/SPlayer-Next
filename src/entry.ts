@@ -1,4 +1,13 @@
+import { invoke } from "@tauri-apps/api/core";
+
 const splash = (): HTMLElement | null => document.getElementById("app-loading");
+
+const reportBootStage = (stage: string): void => {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  void invoke("report_boot_stage", { stage }).catch(() => undefined);
+};
+
+reportBootStage("entry-loaded");
 
 const describeError = (reason: unknown): string => {
   if (reason instanceof Error) return reason.message;
@@ -29,8 +38,14 @@ window.addEventListener("splayer:boot-error", (event) => {
 
 const boot = async (): Promise<void> => {
   // 桌面共享模块会在求值时同步读取 window.api，移动桥接必须先完成安装。
-  if (import.meta.env.MODE === "mobile") await import("./mobile/bootstrap");
+  if (import.meta.env.MODE === "mobile") {
+    reportBootStage("mobile-bootstrap-start");
+    await import("./mobile/bootstrap");
+    reportBootStage("mobile-bootstrap-ready");
+  }
+  reportBootStage("application-import-start");
   await import("./main");
+  reportBootStage("application-import-ready");
 };
 
 void boot().catch(showBootError);

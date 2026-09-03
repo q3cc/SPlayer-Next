@@ -19,6 +19,11 @@ fn configure_ios_audio_session() {
     }
 }
 
+#[tauri::command]
+fn report_boot_stage(stage: String) {
+    eprintln!("[splayer-boot] {stage}");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "ios")]
@@ -32,6 +37,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![report_boot_stage])
         .run(tauri::generate_context!())
         .expect("error while running SPlayer Next mobile");
 }

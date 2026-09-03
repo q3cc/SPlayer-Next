@@ -13,8 +13,15 @@ import { initPlayer, playFiles, restoreLastTrack } from "./core/player";
 import { handleOrpheus } from "./services/orpheus";
 import { installHotkeyManager } from "./core/hotkey/manager";
 import { vRipple } from "./directives/ripple";
+import { invoke } from "@tauri-apps/api/core";
+
+const reportBootStage = (stage: string): void => {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  void invoke("report_boot_stage", { stage }).catch(() => undefined);
+};
 
 const startApp = async (): Promise<void> => {
+  reportBootStage("vue-setup-start");
   const pinia = createPinia();
   pinia.use(piniaPersistedstate);
 
@@ -76,9 +83,12 @@ const startApp = async (): Promise<void> => {
   };
 
   // 初始化程序
+  reportBootStage("router-ready-start");
   await router.isReady();
+  reportBootStage("router-ready");
   // 挂载应用
   app.mount("#app");
+  reportBootStage("vue-mounted");
   // 计算剩余时间
   const elapsed = performance.now() - (window.__splashStart ?? 0);
   const remaining = Math.max(0, SPLASH_ANIM_MS - elapsed);

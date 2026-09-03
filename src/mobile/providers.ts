@@ -1,8 +1,11 @@
 import type { ApiCallResponse, ApiPlatform, ApisApi } from "@shared/types/apis";
-import { callNetease, clearNeteaseCookies, mergeNeteaseCookies } from "@main/apis/netease";
-import { NeteaseRequestError } from "@main/apis/netease/core/request";
-import { callQQMusic, clearQQMusicCookies, mergeQQMusicCookies } from "@main/apis/qqmusic";
-import { callKugou, clearKugouSession, mergeKugouSession } from "@main/apis/kugou";
+
+// The provider implementations include sizeable crypto shims. Loading them while the
+// WebView is painting its first frame can stall older iPads, so defer each provider
+// until the user actually performs a network operation.
+const loadNetease = () => import("@main/apis/netease");
+const loadQQMusic = () => import("@main/apis/qqmusic");
+const loadKugou = () => import("@main/apis/kugou");
 
 const parseCookie = (raw: string): Record<string, string> => {
   const result: Record<string, string> = {};
@@ -21,17 +24,29 @@ const call = async (
 ): Promise<ApiCallResponse> => {
   try {
     if (platform === "netease") {
+      const { callNetease } = await loadNetease();
       const response = await callNetease(name, params);
       return { ok: true, status: response.status, body: response.body };
     }
-    if (platform === "qqmusic") return { ok: true, data: await callQQMusic(name, params) };
+    if (platform === "qqmusic") {
+      const { callQQMusic } = await loadQQMusic();
+      return { ok: true, data: await callQQMusic(name, params) };
+    }
+    const { callKugou } = await loadKugou();
     return { ok: true, data: await callKugou(name, params) };
   } catch (error) {
-    if (error instanceof NeteaseRequestError) {
+    if (
+      error instanceof Error &&
+      "response" in error &&
+      typeof error.response === "object" &&
+      error.response !== null &&
+      "status" in error.response &&
+      "body" in error.response
+    ) {
       return {
         ok: false,
         error: error.message,
-        status: error.response.status,
+        status: Number(error.response.status),
         body: error.response.body,
       };
     }
@@ -40,9 +55,9 @@ const call = async (
 };
 
 const clearSession = async (platform: ApiPlatform): Promise<void> => {
-  if (platform === "netease") clearNeteaseCookies();
-  if (platform === "qqmusic") clearQQMusicCookies();
-  if (platform === "kugou") clearKugouSession();
+  if (platform === "netease") (await loadNetease()).clearNeteaseCookies();
+  if (platform === "qqmusic") (await loadQQMusic()).clearQQMusicCookies();
+  if (platform === "kugou") (await loadKugou()).clearKugouSession();
 };
 
 const setCookie = async (
@@ -52,15 +67,15 @@ const setCookie = async (
   const parsed = parseCookie(raw);
   if (platform === "netease") {
     if (!parsed.MUSIC_U) return { ok: false, error: "missing MUSIC_U" };
-    mergeNeteaseCookies(parsed);
+    (await loadNetease()).mergeNeteaseCookies(parsed);
   } else if (platform === "qqmusic") {
     if (!parsed.uin && !parsed.wxuin && !parsed.qm_keyst && !parsed.qqmusic_key) {
       return { ok: false, error: "missing uin or key" };
     }
-    mergeQQMusicCookies(parsed);
+    (await loadQQMusic()).mergeQQMusicCookies(parsed);
   } else {
     if (!parsed.token || !parsed.userid) return { ok: false, error: "missing token or userid" };
-    mergeKugouSession(parsed);
+    (await loadKugou()).mergeKugouSession(parsed);
   }
   return { ok: true };
 };

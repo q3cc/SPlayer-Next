@@ -145,14 +145,27 @@ jobs:
           xcrun simctl launch --terminate-running-process "$device_id" top.imsyy.splayer-next.ios \
             | tee ios-smoke/first-launch.txt
           sleep 15
-          xcrun simctl io "$device_id" screenshot ios-smoke/first-launch.png
+          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
+            --style compact --last 2m \
+            --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
+            > ios-smoke/first-system.log || true
+          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl io "$device_id" screenshot \
+            ios-smoke/first-launch.png || echo "first screenshot timed out" \
+            | tee ios-smoke/first-screenshot-error.txt
 
           xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios
           xcrun simctl launch "$device_id" top.imsyy.splayer-next.ios | tee ios-smoke/second-launch.txt
           sleep 10
-          xcrun simctl io "$device_id" screenshot ios-smoke/second-launch.png
+          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
+            --style compact --last 2m \
+            --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
+            > ios-smoke/second-system.log || true
+          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl io "$device_id" screenshot \
+            ios-smoke/second-launch.png || echo "second screenshot timed out" \
+            | tee ios-smoke/second-screenshot-error.txt
 
-          xcrun simctl spawn "$device_id" log show --style compact --last 2m \
+          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
+            --style compact --last 2m \
             --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
             > ios-smoke/system.log || true
 

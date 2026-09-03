@@ -1,8 +1,5 @@
-import { callKugou } from "@main/apis/kugou";
 import type { KGSong } from "@main/apis/kugou/core/types";
 import { pickBestCandidate, type LyricCandidate } from "@main/apis/common/lyric/utils";
-import { callNetease } from "@main/apis/netease";
-import { callQQMusic } from "@main/apis/qqmusic";
 import {
   normalizeKugouCommentPage,
   normalizeNeteaseCommentPage,
@@ -19,6 +16,13 @@ const EMPTY = (query: MusicCommentQuery): MusicCommentPage => ({
   page: query.page,
   limit: query.limit,
 });
+
+const callNetease = async (name: string, params: Record<string, unknown>) =>
+  (await import("@main/apis/netease")).callNetease(name, params);
+const callQQMusic = async (name: string, params: Record<string, unknown>) =>
+  (await import("@main/apis/qqmusic")).callQQMusic(name, params);
+const callKugou = async <T>(name: string, params: Record<string, unknown>) =>
+  (await import("@main/apis/kugou")).callKugou<T>(name, params);
 
 const keywordFor = (track: Track): string =>
   `${track.title} ${track.artists.map((artist) => artist.name).join(" ")}`.trim();
