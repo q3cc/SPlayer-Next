@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-unsigned-${{ github.ref }}
+  group: ios-unsigned-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -107,6 +107,7 @@ jobs:
           pnpm tauri ios build --ci --debug --no-sign --target "$simulator_target"
 
       - name: Smoke test first and second launch on iPad
+        timeout-minutes: 5
         shell: bash
         run: |
           set -euo pipefail
