@@ -231,6 +231,8 @@ jobs:
           wait_for_network "$boot_log" || first_network=0
           capture first-launch
           cp "$boot_log" ios-smoke/first-boot.log 2>/dev/null || true
+          timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
+            --predicate 'process == "SPlayer Next"' > ios-smoke/first-console.log 2>&1 || true
           timed 5 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
 
           mv "$boot_log" ios-smoke/first-boot-complete.log 2>/dev/null || true
@@ -239,10 +241,8 @@ jobs:
           wait_for_mount "$boot_log" || second_mounted=0
           capture second-launch
           cp "$boot_log" ios-smoke/second-boot.log 2>/dev/null || true
-          if [[ "$second_mounted" != 1 ]]; then
-            timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
-              --predicate 'process == "SPlayer Next"' > ios-smoke/second-console.log 2>&1 || true
-          fi
+          timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
+            --predicate 'process == "SPlayer Next"' > ios-smoke/second-console.log 2>&1 || true
           timed 5 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
 
           if ! compgen -G 'ios-smoke/first-launch*.png' > /dev/null; then

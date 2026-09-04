@@ -52,6 +52,11 @@ const testLibraryScan = async (): Promise<void> => {
 export const runMobileSmokeTest = async (): Promise<void> => {
   reportBootStage("network-smoke-start");
   try {
+    if (!document.querySelector(".onboarding-page")) {
+      throw new Error(`onboarding page missing at ${location.hash}`);
+    }
+    reportBootStage("onboarding-ready");
+
     const [playlists, artists, albums] = await Promise.all([
       fetchRecommendPlaylists(false),
       fetchArtists(),

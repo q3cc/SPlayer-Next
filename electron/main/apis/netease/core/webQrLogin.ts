@@ -1,4 +1,4 @@
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { cookieObjToString, cookieToJson } from "./cookie";
 import { createOption, type Query } from "./option";
 import type { RequestOptions } from "./request";
@@ -6,10 +6,12 @@ import type { RequestOptions } from "./request";
 const WEB_QR_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0";
 
+const randomInteger = (max: number): number => randomBytes(4).readUInt32BE(0) % max;
+
 const randomFrom = (alphabet: string, length: number): string => {
   let value = "";
   for (let index = 0; index < length; index += 1) {
-    value += alphabet[randomInt(0, alphabet.length)];
+    value += alphabet[randomInteger(alphabet.length)];
   }
   return value;
 };
@@ -97,6 +99,6 @@ export const createWebQrRequest = (
 export const generateWebQrChainId = (
   cookie: string | Record<string, string> | undefined,
 ): string => {
-  const deviceId = normalizeCookie(cookie).sDeviceId || `unknown-${randomInt(0, 1_000_000)}`;
+  const deviceId = normalizeCookie(cookie).sDeviceId || `unknown-${randomInteger(1_000_000)}`;
   return `v1_${deviceId}_web_login_${Date.now()}`;
 };
