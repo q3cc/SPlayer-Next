@@ -16,6 +16,7 @@ import { vRipple } from "./directives/ripple";
 import { invoke } from "@tauri-apps/api/core";
 
 const reportBootStage = (stage: string): void => {
+  console.info(`[splayer-boot] ${stage}`);
   if (!("__TAURI_INTERNALS__" in window)) return;
   void invoke("report_boot_stage", { stage }).catch(() => undefined);
 };
@@ -45,7 +46,7 @@ const startApp = async (): Promise<void> => {
   );
 
   /** splash 笔画动画总时长（ms） */
-  const SPLASH_ANIM_MS = 2050;
+  const SPLASH_ANIM_MS = import.meta.env.MODE === "mobile" ? 150 : 2050;
 
   /** 标记 splash 定时器是否已触发 */
   let splashTimerFired = false;

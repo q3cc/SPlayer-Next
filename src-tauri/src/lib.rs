@@ -1,3 +1,21 @@
+fn record_boot_stage(stage: &str) {
+    eprintln!("[splayer-boot] {stage}");
+
+    #[cfg(target_os = "ios")]
+    {
+        use std::fs::OpenOptions;
+        use std::io::Write;
+
+        if let Ok(mut file) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(std::env::temp_dir().join("splayer-boot.log"))
+        {
+            let _ = writeln!(file, "{stage}");
+        }
+    }
+}
+
 #[cfg(target_os = "ios")]
 fn configure_ios_audio_session() {
     use objc2_avf_audio::{AVAudioSession, AVAudioSessionCategoryPlayback};
@@ -21,13 +39,12 @@ fn configure_ios_audio_session() {
 
 #[tauri::command]
 fn report_boot_stage(stage: String) {
-    eprintln!("[splayer-boot] {stage}");
+    record_boot_stage(&stage);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(target_os = "ios")]
-    configure_ios_audio_session();
+    record_boot_stage("native-entry");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
@@ -37,6 +54,16 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .setup(|_| {
+            record_boot_stage("tauri-setup");
+            #[cfg(target_os = "ios")]
+            std::thread::spawn(|| {
+                record_boot_stage("audio-session-start");
+                configure_ios_audio_session();
+                record_boot_stage("audio-session-ready");
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![report_boot_stage])
         .run(tauri::generate_context!())
         .expect("error while running SPlayer Next mobile");

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 const splash = (): HTMLElement | null => document.getElementById("app-loading");
 
 const reportBootStage = (stage: string): void => {
+  console.info(`[splayer-boot] ${stage}`);
   if (!("__TAURI_INTERNALS__" in window)) return;
   void invoke("report_boot_stage", { stage }).catch(() => undefined);
 };

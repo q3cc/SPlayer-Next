@@ -120,12 +120,23 @@ jobs:
 
           capture() {
             local name="$1"
-            if timed 30 xcrun simctl io "$device_id" screenshot "ios-smoke/$name.png"; then
+            if timed 12 xcrun simctl io "$device_id" screenshot "ios-smoke/$name.png"; then
               return
             fi
             echo "$name simulator screenshot timed out; trying the Simulator window" \
               | tee "ios-smoke/$name-screenshot-error.txt"
-            timed 20 screencapture -x "ios-smoke/$name-host.png" || true
+            timed 10 screencapture -x "ios-smoke/$name-host.png" || true
+          }
+
+          wait_for_mount() {
+            local boot_log="$1"
+            for _ in {1..30}; do
+              if [[ -f "$boot_log" ]] && grep -Fxq 'vue-mounted' "$boot_log"; then
+                return 0
+              fi
+              sleep 1
+            done
+            return 1
           }
 
           app_path="$(find src-tauri/gen/apple/build -type d -name '*.app' \
@@ -150,22 +161,29 @@ jobs:
           open -a Simulator --args -CurrentDeviceUDID "$device_id" || true
           timed 300 xcrun simctl bootstatus "$device_id" -b | tee ios-smoke/bootstatus.txt
           timed 240 xcrun simctl install "$device_id" "$app_path" 2>ios-smoke/install-error.txt
+          data_container="$(xcrun simctl get_app_container "$device_id" top.imsyy.splayer-next.ios data)"
+          boot_log="$data_container/tmp/splayer-boot.log"
 
-          timed 90 xcrun simctl launch --terminate-running-process --console "$device_id" \
-            top.imsyy.splayer-next.ios > ios-smoke/first-console.log 2>&1 &
-          first_console_pid=$!
-          sleep 15
+          timed 20 xcrun simctl launch --terminate-running-process "$device_id" \
+            top.imsyy.splayer-next.ios | tee ios-smoke/first-launch.txt
+          first_mounted=1
+          wait_for_mount "$boot_log" || first_mounted=0
           capture first-launch
-          timed 30 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
-          wait "$first_console_pid" || true
+          cp "$boot_log" ios-smoke/first-boot.log 2>/dev/null || true
+          timed 20 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
+            --predicate 'process == "SPlayer Next"' > ios-smoke/first-console.log 2>&1 || true
+          timed 10 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
 
-          timed 90 xcrun simctl launch --console "$device_id" top.imsyy.splayer-next.ios \
-            > ios-smoke/second-console.log 2>&1 &
-          second_console_pid=$!
-          sleep 10
+          mv "$boot_log" ios-smoke/first-boot-complete.log 2>/dev/null || true
+          timed 20 xcrun simctl launch "$device_id" top.imsyy.splayer-next.ios \
+            | tee ios-smoke/second-launch.txt
+          second_mounted=1
+          wait_for_mount "$boot_log" || second_mounted=0
           capture second-launch
-          timed 30 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
-          wait "$second_console_pid" || true
+          cp "$boot_log" ios-smoke/second-boot.log 2>/dev/null || true
+          timed 20 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
+            --predicate 'process == "SPlayer Next"' > ios-smoke/second-console.log 2>&1 || true
+          timed 10 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
 
           if ! compgen -G 'ios-smoke/first-launch*.png' > /dev/null; then
             echo "No first-launch screenshot was captured" >&2
@@ -173,6 +191,10 @@ jobs:
           fi
           if ! compgen -G 'ios-smoke/second-launch*.png' > /dev/null; then
             echo "No second-launch screenshot was captured" >&2
+            exit 1
+          fi
+          if [[ "$first_mounted" != 1 || "$second_mounted" != 1 ]]; then
+            echo "The application did not reach vue-mounted on both launches" >&2
             exit 1
           fi
 
