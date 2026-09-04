@@ -107,10 +107,26 @@ jobs:
           pnpm tauri ios build --ci --debug --no-sign --target "$simulator_target"
 
       - name: Smoke test first and second launch on iPad
-        timeout-minutes: 5
+        timeout-minutes: 12
         shell: bash
         run: |
           set -euo pipefail
+
+          timed() {
+            local seconds="$1"
+            shift
+            perl -e 'alarm shift; exec @ARGV' "$seconds" "$@"
+          }
+
+          capture() {
+            local name="$1"
+            if timed 30 xcrun simctl io "$device_id" screenshot "ios-smoke/$name.png"; then
+              return
+            fi
+            echo "$name simulator screenshot timed out; trying the Simulator window" \
+              | tee "ios-smoke/$name-screenshot-error.txt"
+            timed 20 screencapture -x "ios-smoke/$name-host.png" || true
+          }
 
           app_path="$(find src-tauri -type d -name '*.app' ! -path '*archive*' -print | tail -1)"
           if [[ -z "$app_path" ]]; then
@@ -127,47 +143,35 @@ jobs:
 
           mkdir -p ios-smoke
           printf 'app=%s\ndevice=%s\n' "$app_path" "$device_id" | tee ios-smoke/environment.txt
-          xcrun simctl boot "$device_id" 2>/dev/null || true
+          timed 30 xcrun simctl boot "$device_id" 2>ios-smoke/boot-error.txt || true
+          open -a Simulator --args -CurrentDeviceUDID "$device_id" || true
+          timed 300 xcrun simctl bootstatus "$device_id" -b | tee ios-smoke/bootstatus.txt
+          timed 60 xcrun simctl install "$device_id" "$app_path" 2>ios-smoke/install-error.txt
 
-          installed=false
-          for attempt in {1..60}; do
-            if xcrun simctl install "$device_id" "$app_path" 2>ios-smoke/install-error.txt; then
-              installed=true
-              break
-            fi
-            sleep 2
-          done
-          if [[ "$installed" != "true" ]]; then
-            cat ios-smoke/install-error.txt >&2
+          timed 90 xcrun simctl launch --terminate-running-process --console "$device_id" \
+            top.imsyy.splayer-next.ios > ios-smoke/first-console.log 2>&1 &
+          first_console_pid=$!
+          sleep 15
+          capture first-launch
+          timed 30 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
+          wait "$first_console_pid" || true
+
+          timed 90 xcrun simctl launch --console "$device_id" top.imsyy.splayer-next.ios \
+            > ios-smoke/second-console.log 2>&1 &
+          second_console_pid=$!
+          sleep 10
+          capture second-launch
+          timed 30 xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios || true
+          wait "$second_console_pid" || true
+
+          if ! compgen -G 'ios-smoke/first-launch*.png' > /dev/null; then
+            echo "No first-launch screenshot was captured" >&2
             exit 1
           fi
-
-          xcrun simctl launch --terminate-running-process "$device_id" top.imsyy.splayer-next.ios \
-            | tee ios-smoke/first-launch.txt
-          sleep 15
-          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
-            --style compact --last 2m \
-            --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
-            > ios-smoke/first-system.log || true
-          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl io "$device_id" screenshot \
-            ios-smoke/first-launch.png || echo "first screenshot timed out" \
-            | tee ios-smoke/first-screenshot-error.txt
-
-          xcrun simctl terminate "$device_id" top.imsyy.splayer-next.ios
-          xcrun simctl launch "$device_id" top.imsyy.splayer-next.ios | tee ios-smoke/second-launch.txt
-          sleep 10
-          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
-            --style compact --last 2m \
-            --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
-            > ios-smoke/second-system.log || true
-          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl io "$device_id" screenshot \
-            ios-smoke/second-launch.png || echo "second screenshot timed out" \
-            | tee ios-smoke/second-screenshot-error.txt
-
-          perl -e 'alarm shift; exec @ARGV' 20 xcrun simctl spawn "$device_id" log show \
-            --style compact --last 2m \
-            --predicate 'process == "SPlayer Next" OR process == "splayer-next-mobile"' \
-            > ios-smoke/system.log || true
+          if ! compgen -G 'ios-smoke/second-launch*.png' > /dev/null; then
+            echo "No second-launch screenshot was captured" >&2
+            exit 1
+          fi
 
       - name: Upload iPad smoke-test diagnostics
         if: always()
