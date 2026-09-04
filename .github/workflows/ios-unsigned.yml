@@ -229,6 +229,7 @@ jobs:
           wait_for_mount "$boot_log" || first_mounted=0
           first_network=1
           wait_for_network "$boot_log" || first_network=0
+          sleep 1
           capture first-launch
           cp "$boot_log" ios-smoke/first-boot.log 2>/dev/null || true
           timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
@@ -239,6 +240,7 @@ jobs:
           launch_app second-launch || true
           second_mounted=1
           wait_for_mount "$boot_log" || second_mounted=0
+          sleep 1
           capture second-launch
           cp "$boot_log" ios-smoke/second-boot.log 2>/dev/null || true
           timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \

@@ -9,6 +9,43 @@ const requireItems = (name: string, items: unknown[]): void => {
   if (!items.length) throw new Error(`${name} returned no items`);
 };
 
+const nextPaint = (): Promise<void> =>
+  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+
+const testOnboardingVisible = async (): Promise<void> => {
+  await nextPaint();
+  const page = document.querySelector<HTMLElement>(".onboarding-page");
+  const heading = page?.querySelector<HTMLElement>("h1");
+  const splash = document.getElementById("app-loading");
+  if (!page || !heading) throw new Error(`onboarding page missing at ${location.hash}`);
+
+  const pageStyle = getComputedStyle(page);
+  const headingStyle = getComputedStyle(heading);
+  const rect = page.getBoundingClientRect();
+  const headingRect = heading.getBoundingClientRect();
+  const splashStyle = splash ? getComputedStyle(splash) : null;
+  const splashHidden =
+    !splash ||
+    splash.classList.contains("hidden") ||
+    splashStyle?.display === "none" ||
+    Number(splashStyle?.opacity ?? 1) === 0;
+  const visible =
+    rect.width > 0 &&
+    rect.height > 0 &&
+    headingRect.width > 0 &&
+    headingRect.height > 0 &&
+    pageStyle.display !== "none" &&
+    pageStyle.visibility === "visible" &&
+    Number(pageStyle.opacity) > 0 &&
+    headingStyle.visibility === "visible";
+
+  reportBootStage(
+    `onboarding-layout:${Math.round(rect.width)}x${Math.round(rect.height)}:${headingStyle.color}:${splashHidden ? "clear" : "covered"}`,
+  );
+  if (!visible) throw new Error("onboarding page is not visible");
+  if (!splashHidden) throw new Error("startup splash still covers onboarding");
+};
+
 const createSilentWav = (): Uint8Array => {
   const samples = 800;
   const buffer = new ArrayBuffer(44 + samples * 2);
@@ -52,9 +89,9 @@ const testLibraryScan = async (): Promise<void> => {
 export const runMobileSmokeTest = async (): Promise<void> => {
   reportBootStage("network-smoke-start");
   try {
-    if (!document.querySelector(".onboarding-page")) {
-      throw new Error(`onboarding page missing at ${location.hash}`);
-    }
+    // 等待挂载后的首帧与启动遮罩淡出，再验证用户实际能看到的公共引导页。
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    await testOnboardingVisible();
     reportBootStage("onboarding-ready");
 
     const [playlists, artists, albums] = await Promise.all([

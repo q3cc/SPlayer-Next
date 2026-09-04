@@ -16,10 +16,17 @@ import {
   publicEncrypt,
   constants,
   randomBytes,
-  randomInt,
 } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { BASE62, EAPI_KEY, IV, LINUX_API_KEY, PRESET_KEY, PUBLIC_KEY } from "./config";
+
+/** 生成无模偏差的 base62 随机索引，兼容没有 randomInt 的浏览器端 crypto 实现 */
+const randomBase62Index = (): number => {
+  const unbiasedLimit = Math.floor(256 / BASE62.length) * BASE62.length;
+  let value = randomBytes(1)[0];
+  while (value >= unbiasedLimit) value = randomBytes(1)[0];
+  return value % BASE62.length;
+};
 
 /**
  * AES 加密
@@ -92,7 +99,7 @@ export const weapi = (object: unknown): { params: string; encSecKey: string } =>
   const text = JSON.stringify(object);
   let secretKey = "";
   for (let i = 0; i < 16; i++) {
-    secretKey += BASE62.charAt(randomInt(0, 62));
+    secretKey += BASE62.charAt(randomBase62Index());
   }
   const first = aesEncrypt(text, "cbc", PRESET_KEY, IV);
   const params = aesEncrypt(first, "cbc", secretKey, IV);

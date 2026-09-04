@@ -136,36 +136,39 @@ const complete = async (): Promise<void> => {
   opacity: 0;
   transform: translateX(24px);
 }
+</style>
 
-:global(.mobile) .onboarding-page {
+<!-- 移动端根类位于 html 上，使用非 scoped 选择器避免构建器裁剪后代选择器。 -->
+<style>
+html.mobile .onboarding-page {
   height: 100dvh;
 }
 
-:global(.mobile) .onboarding-titlebar {
+html.mobile .onboarding-titlebar {
   display: none;
 }
 
-:global(.mobile) .onboarding-content {
+html.mobile .onboarding-content {
   padding-top: calc(env(safe-area-inset-top) + 1.5rem);
   padding-bottom: 0.75rem;
 }
 
-:global(.mobile) .onboarding-footer {
+html.mobile .onboarding-footer {
   padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
 }
 
 @media (max-width: 600px), (max-height: 700px) {
-  :global(.mobile) .onboarding-content {
+  html.mobile .onboarding-content {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
     padding-top: calc(env(safe-area-inset-top) + 1rem);
   }
 
-  :global(.mobile) .onboarding-progress {
+  html.mobile .onboarding-progress {
     margin-bottom: 1rem;
   }
 
-  :global(.mobile) .onboarding-footer {
+  html.mobile .onboarding-footer {
     padding-top: 0.5rem;
     padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
   }
