@@ -21,7 +21,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ios-unsigned-${{ github.ref }}
+  # A macOS runner can remain stuck in GitHub's "Complete job" phase after all
+  # artifacts are uploaded. Key by revision so that zombie cleanup cannot block
+  # validation of a newer fix.
+  group: ios-unsigned-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
