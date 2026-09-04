@@ -17,6 +17,7 @@ import PlaylistPickerDialog from "@/components/modals/PlaylistPickerDialog.vue";
 import { useWindowControls } from "@/composables/useWindowControls";
 import * as player from "@/core/player";
 import { openExternal } from "@/utils/url";
+import { isIOS } from "@/utils/config";
 import IconFavorite from "~icons/material-symbols/favorite-rounded";
 import IconFavoriteOutline from "~icons/material-symbols/favorite-outline-rounded";
 import IconLucideListPlus from "~icons/lucide/list-plus";
@@ -26,6 +27,7 @@ const status = useStatusStore();
 const media = useMediaStore();
 const settings = useSettingsStore();
 const isCompactLayout = useMediaQuery("(max-width: 900px)");
+const useMobileLayout = computed(() => isIOS || isCompactLayout.value);
 const fav = useFavorite();
 const { enqueue: enqueueDownload } = useDownload();
 const { t } = useI18n();
@@ -233,14 +235,14 @@ const showComments = (): void => {
           class="absolute top-0 inset-x-0 h-14 z-10 app-drag-region transition-opacity duration-400 flex items-center justify-between px-3"
           :class="[
             immersive ? 'opacity-0 pointer-events-none' : 'opacity-100',
-            isCompactLayout ? 'mobile-full-player-header' : '',
+            useMobileLayout ? 'mobile-full-player-header' : '',
           ]"
           @mouseenter="onBarEnter"
           @mouseleave="onBarLeave"
         >
           <div class="app-no-drag flex items-center gap-2">
             <SButton
-              v-if="isCompactLayout"
+              v-if="useMobileLayout"
               type="cover"
               variant="ghost"
               circle
@@ -261,7 +263,7 @@ const showComments = (): void => {
               <template #icon><IconLucideTextQuote /></template>
             </SButton>
           </div>
-          <div v-if="!isCompactLayout" class="app-no-drag flex items-center gap-3">
+          <div v-if="!useMobileLayout" class="app-no-drag flex items-center gap-3">
             <SButton type="cover" variant="ghost" circle :size="40" @click="toggleFullscreen">
               <template #icon>
                 <IconLucideMinimize v-if="isFullscreen" />
@@ -274,23 +276,23 @@ const showComments = (): void => {
         <!-- 主区域 -->
         <div
           class="absolute top-14 inset-x-0"
-          :class="[isCompactLayout ? 'bottom-34 mobile-full-player-main' : 'bottom-20']"
+          :class="[useMobileLayout ? 'bottom-34 mobile-full-player-main' : 'bottom-20']"
           @mousemove="onMainMove"
         >
           <!-- 左侧 -->
           <div
-            v-if="!fullscreenCover || isCompactLayout"
+            v-if="!fullscreenCover || useMobileLayout"
             class="absolute inset-y-0 left-0 flex items-center justify-center px-12 transition-transform duration-600 ease-[cubic-bezier(0.4,0,0.2,1)]"
             :class="[
-              isCompactLayout ? 'mobile-cover-panel px-8' : '',
-              isCompactLayout && (showLyric || status.fullQueueOpen)
+              useMobileLayout ? 'mobile-cover-panel px-8' : '',
+              useMobileLayout && (showLyric || status.fullQueueOpen)
                 ? 'opacity-0 pointer-events-none'
                 : 'opacity-100',
             ]"
             :style="{
-              width: isCompactLayout ? '100%' : coverWidth,
+              width: useMobileLayout ? '100%' : coverWidth,
               transform:
-                !isCompactLayout && coverCentered ? 'translateX(calc(50vw - 50%))' : undefined,
+                !useMobileLayout && coverCentered ? 'translateX(calc(50vw - 50%))' : undefined,
             }"
           >
             <div class="relative w-[clamp(200px,85%,50vh)] -translate-y-[11vh]">
@@ -308,8 +310,8 @@ const showComments = (): void => {
           <div
             class="group absolute inset-y-0 right-0 pr-20 flex flex-col transition-opacity duration-600 ease-[cubic-bezier(0.4,0,0.2,1)]"
             :class="[
-              isCompactLayout ? 'mobile-lyric-panel px-5' : '',
-              isCompactLayout
+              useMobileLayout ? 'mobile-lyric-panel px-5' : '',
+              useMobileLayout
                 ? !showLyric || status.fullQueueOpen
                   ? 'opacity-0 pointer-events-none'
                   : 'opacity-100'
@@ -318,7 +320,7 @@ const showComments = (): void => {
                   : 'opacity-100',
             ]"
             :style="{
-              width: isCompactLayout
+              width: useMobileLayout
                 ? '100%'
                 : fullscreenCover
                   ? '50%'
@@ -327,7 +329,7 @@ const showComments = (): void => {
           >
             <!-- 全屏封面 -->
             <div
-              v-if="fullscreenCover && !isCompactLayout"
+              v-if="fullscreenCover && !useMobileLayout"
               class="shrink-0 pt-2 pb-6 pl-[calc(1em-0.5rem)]"
               :style="{ fontSize: lyricFontSize }"
             >
@@ -426,7 +428,7 @@ const showComments = (): void => {
             class="absolute inset-y-0 right-0 pl-4 py-6 flex items-center"
             :class="status.fullQueueOpen ? '' : 'pointer-events-none'"
             :style="{
-              width: isCompactLayout
+              width: useMobileLayout
                 ? '100%'
                 : fullscreenCover
                   ? '50%'
@@ -447,7 +449,7 @@ const showComments = (): void => {
         </div>
         <!-- 底栏 -->
         <div
-          v-if="!isCompactLayout"
+          v-if="!useMobileLayout"
           class="absolute bottom-0 inset-x-0 h-20 z-10 flex items-center gap-4 px-4 transition-opacity duration-400"
           :class="immersive ? 'opacity-0 pointer-events-none' : 'opacity-100'"
           @mouseenter="onBarEnter"
@@ -673,21 +675,35 @@ const showComments = (): void => {
 
 <style scoped>
 .mobile-full-player-controls {
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  padding-right: var(--s-safe-right);
+  padding-bottom: calc(0.75rem + var(--s-safe-bottom));
+  padding-left: var(--s-safe-left);
 }
 
 .mobile-full-player-header {
-  height: calc(3.5rem + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
+  height: calc(3.5rem + var(--s-safe-top));
+  padding-top: var(--s-safe-top);
+  padding-right: calc(0.75rem + var(--s-safe-right));
+  padding-left: calc(0.75rem + var(--s-safe-left));
 }
 
 .mobile-full-player-main {
-  top: calc(3.5rem + env(safe-area-inset-top));
+  top: calc(3.5rem + var(--s-safe-top));
 }
 
 .mobile-cover-panel > div {
   width: min(78vw, 52vh);
   transform: translateY(-4vh);
+}
+
+.mobile-cover-panel {
+  padding-right: calc(2rem + var(--s-safe-right));
+  padding-left: calc(2rem + var(--s-safe-left));
+}
+
+.mobile-lyric-panel {
+  padding-right: calc(1.25rem + var(--s-safe-right));
+  padding-left: calc(1.25rem + var(--s-safe-left));
 }
 
 .lyric-area {

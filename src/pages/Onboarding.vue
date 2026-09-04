@@ -149,19 +149,23 @@ html.mobile .onboarding-titlebar {
 }
 
 html.mobile .onboarding-content {
-  padding-top: calc(env(safe-area-inset-top) + 1.5rem);
+  padding-right: calc(2rem + var(--s-safe-right));
+  padding-left: calc(2rem + var(--s-safe-left));
+  padding-top: calc(var(--s-safe-top) + 1.5rem);
   padding-bottom: 0.75rem;
 }
 
 html.mobile .onboarding-footer {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  padding-right: var(--s-safe-right);
+  padding-bottom: calc(var(--s-safe-bottom) + 1rem);
+  padding-left: var(--s-safe-left);
 }
 
 @media (max-width: 600px), (max-height: 700px) {
   html.mobile .onboarding-content {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-    padding-top: calc(env(safe-area-inset-top) + 1rem);
+    padding-right: calc(1.25rem + var(--s-safe-right));
+    padding-left: calc(1.25rem + var(--s-safe-left));
+    padding-top: calc(var(--s-safe-top) + 1rem);
   }
 
   html.mobile .onboarding-progress {
@@ -170,7 +174,7 @@ html.mobile .onboarding-footer {
 
   html.mobile .onboarding-footer {
     padding-top: 0.5rem;
-    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+    padding-bottom: calc(var(--s-safe-bottom) + 0.5rem);
   }
 }
 </style>

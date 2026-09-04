@@ -52,8 +52,9 @@ const isActive = (path: string): boolean =>
   left: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  min-height: calc(4rem + env(safe-area-inset-bottom));
-  padding: 0.35rem 0.2rem env(safe-area-inset-bottom);
+  min-height: calc(4rem + var(--s-safe-bottom));
+  padding: 0.35rem calc(0.2rem + var(--s-safe-right)) var(--s-safe-bottom)
+    calc(0.2rem + var(--s-safe-left));
   border-top: 1px solid rgb(var(--s-primary) / 0.1);
   background: rgb(var(--s-surface-panel) / 0.94);
   backdrop-filter: blur(18px) saturate(1.35);

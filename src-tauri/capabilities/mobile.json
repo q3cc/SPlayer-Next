@@ -9,6 +9,10 @@
     "deep-link:default",
     "dialog:default",
     "fs:default",
+    "fs:allow-appcache-read-recursive",
+    "fs:allow-appcache-write-recursive",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-appdata-write-recursive",
     {
       "identifier": "http:default",
       "allow": ["http://**", "https://**"]

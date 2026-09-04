@@ -33,6 +33,10 @@ img {
 /* 应用主背景 */
 :root {
   --s-app-bg: rgb(var(--s-surface));
+  --s-safe-top: env(safe-area-inset-top, 0px);
+  --s-safe-right: env(safe-area-inset-right, 0px);
+  --s-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --s-safe-left: env(safe-area-inset-left, 0px);
 }
 html[data-appearance-style="image"] {
   --s-app-bg: transparent;

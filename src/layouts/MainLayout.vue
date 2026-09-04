@@ -4,11 +4,14 @@ import { useMediaStore } from "@/stores/media";
 import { useSettingsStore } from "@/stores/settings";
 import { useOrpheusProtocol } from "@/composables/useOrpheusProtocol";
 import { useExternalFileHandler } from "@/composables/useExternalFileHandler";
+import { isIOS } from "@/utils/config";
 
 const route = useRoute();
 const status = useStatusStore();
 const settings = useSettingsStore();
-const isCompactLayout = useMediaQuery("(max-width: 900px)");
+const narrowLayout = useMediaQuery("(max-width: 900px)");
+// iPhone 与 iPad 始终复用移动导航；前台调度缩放时媒体查询仍负责非 iOS 窄窗口。
+const isCompactLayout = computed(() => isIOS || narrowLayout.value);
 
 // 接入 orpheus 协议唤起与外部音频文件播放
 useOrpheusProtocol();
@@ -121,7 +124,10 @@ const playerBarInnerClass = computed(() => {
   <!-- 主界面 -->
   <div
     class="app-viewport h-screen flex overflow-hidden bg-app text-on-surface transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.7,0,0.3,1)] origin-center"
-    :class="isPlayerExpanded ? 'scale-95 opacity-0 pointer-events-none' : ''"
+    :class="[
+      isIOS ? 'ios-app-viewport' : '',
+      isPlayerExpanded ? 'scale-95 opacity-0 pointer-events-none' : '',
+    ]"
   >
     <!-- 侧边栏 -->
     <aside
@@ -143,7 +149,7 @@ const playerBarInnerClass = computed(() => {
     >
       <!-- 顶部导航 -->
       <header
-        class="h-16 shrink-0 flex items-center px-3"
+        class="main-header h-16 shrink-0 flex items-center px-3"
         :class="isCompactLayout ? 'mobile-header' : ''"
       >
         <NavHeader />
@@ -200,21 +206,28 @@ const playerBarInnerClass = computed(() => {
   height: 100dvh;
 }
 
+.ios-app-viewport {
+  padding-right: var(--s-safe-right);
+  padding-left: var(--s-safe-left);
+}
+
 .mobile-header {
-  height: calc(3.5rem + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
+  height: calc(3.5rem + var(--s-safe-top));
+  padding-top: var(--s-safe-top);
 }
 
 .mobile-main-shell {
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(4rem + var(--s-safe-bottom));
 }
 
 .mobile-main-shell.has-player {
-  padding-bottom: calc(8.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(8.5rem + var(--s-safe-bottom));
 }
 
 .mobile-player-wrapper {
-  bottom: calc(4rem + env(safe-area-inset-bottom));
+  right: var(--s-safe-right);
+  bottom: calc(4rem + var(--s-safe-bottom));
+  left: var(--s-safe-left);
 }
 
 .mobile-player-inner {

@@ -5,6 +5,8 @@ import process from "node:process";
 const dist = path.resolve("dist-mobile");
 const indexPath = path.join(dist, "index.html");
 const assetsPath = path.join(dist, "assets");
+const tauriConfigPath = path.resolve("src-tauri/tauri.conf.json");
+const iosInfoPath = path.resolve("src-tauri/Info.ios.plist");
 
 const fail = (message: string): never => {
   console.error(`[VerifyMobileBundle] ${message}`);
@@ -46,6 +48,16 @@ if (/\.mobile\s*\{[^}]*display\s*:\s*none/.test(styles)) {
   fail("移动样式错误地隐藏了整个 html.mobile 根节点");
 }
 if (!styles.includes("html.mobile .onboarding-titlebar")) fail("缺少移动端引导页适配样式");
+if (!/--s-safe-top\s*:\s*env\(safe-area-inset-top\s*,\s*0px\)/.test(styles)) {
+  fail("缺少 iPhone/iPad 动态安全区变量");
+}
+
+const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8")) as {
+  app?: { windows?: Array<{ fullscreen?: boolean }> };
+};
+if (tauriConfig.app?.windows?.[0]?.fullscreen !== false) fail("iPad 窗口仍被强制全屏");
+const iosInfo = fs.readFileSync(iosInfoPath, "utf8");
+if (iosInfo.includes("UIRequiresFullScreen")) fail("Info.plist 仍禁止 iPad 动态窗口调度");
 
 console.log(
   `[VerifyMobileBundle] 通过：${scripts.length} 个 JS 分包，静态入口 ${Math.ceil(fs.statSync(entryPath).size / 1024)} KB`,

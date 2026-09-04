@@ -186,7 +186,12 @@ export const mobileLibrary: LibraryApi = {
     success([...tracks].sort(() => Math.random() - 0.5).slice(0, limit)),
   isScanning: async () => success(false),
   addScanDir: async () => {
-    const selected = await open({ directory: true, multiple: false, fileAccessMode: "copy" });
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      recursive: true,
+      fileAccessMode: "copy",
+    });
     if (!selected) return { success: false, error: "canceled" };
     if (!scanDirs.includes(selected)) {
       scanDirs = [...scanDirs, selected];

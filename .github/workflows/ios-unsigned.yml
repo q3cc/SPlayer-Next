@@ -242,6 +242,9 @@ jobs:
           wait_for_mount "$boot_log" || second_mounted=0
           sleep 1
           capture second-launch
+          timed 10 xcrun simctl io "$device_id" orientation landscapeLeft || true
+          sleep 2
+          capture landscape-launch
           cp "$boot_log" ios-smoke/second-boot.log 2>/dev/null || true
           timed 10 xcrun simctl spawn "$device_id" log show --last 2m --style compact \
             --predicate 'process == "SPlayer Next"' > ios-smoke/second-console.log 2>&1 || true
@@ -253,6 +256,10 @@ jobs:
           fi
           if ! compgen -G 'ios-smoke/second-launch*.png' > /dev/null; then
             echo "No second-launch screenshot was captured" >&2
+            exit 1
+          fi
+          if ! compgen -G 'ios-smoke/landscape-launch*.png' > /dev/null; then
+            echo "No iPad landscape screenshot was captured" >&2
             exit 1
           fi
           if [[ "$first_mounted" != 1 || "$second_mounted" != 1 ]]; then
