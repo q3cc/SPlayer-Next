@@ -1,6 +1,8 @@
 import { fetchArtists, fetchNewAlbums, fetchRecommendPlaylists } from "@/apis/recommend/netease";
 import { neteaseQrLoginAdapter } from "@/apis/login/netease";
 import { reportBootStage } from "@/boot";
+import { useSettingsStore } from "@/stores/settings";
+import { CURRENT_AGREEMENT_VERSION } from "@shared/constants/agreement";
 import { appCacheDir, join } from "@tauri-apps/api/path";
 import { mkdir, remove, writeFile } from "@tauri-apps/plugin-fs";
 import { scanMobileDirectories } from "./library";
@@ -46,6 +48,29 @@ const testOnboardingVisible = async (): Promise<void> => {
   if (!splashHidden) throw new Error("startup splash still covers onboarding");
 };
 
+const testHomeRecommendationsVisible = async (): Promise<void> => {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    const page = document.querySelector<HTMLElement>("main");
+    const mobileNav = document.querySelector<HTMLElement>(".mobile-nav");
+    const sections = [
+      document.querySelector<HTMLElement>("[data-home-recommend-playlists]"),
+      document.querySelector<HTMLElement>("[data-home-recommend-artists]"),
+      document.querySelector<HTMLElement>("[data-home-new-albums]"),
+    ];
+    if (
+      location.hash === "#/" &&
+      page?.getBoundingClientRect().height &&
+      mobileNav?.getBoundingClientRect().height &&
+      sections.every((section) => section && section.getBoundingClientRect().height > 0)
+    ) {
+      reportBootStage("home-recommendations-ready");
+      return;
+    }
+  }
+  throw new Error(`home recommendation sections missing at ${location.hash}`);
+};
+
 const createSilentWav = (): Uint8Array => {
   const samples = 800;
   const buffer = new ArrayBuffer(44 + samples * 2);
@@ -89,6 +114,12 @@ const testLibraryScan = async (): Promise<void> => {
 export const runMobileSmokeTest = async (): Promise<void> => {
   reportBootStage("network-smoke-start");
   try {
+    if (!document.querySelector(".onboarding-page")) {
+      await testHomeRecommendationsVisible();
+      reportBootStage("network-smoke-ready");
+      return;
+    }
+
     // 等待挂载后的首帧与启动遮罩淡出，再验证用户实际能看到的公共引导页。
     await new Promise((resolve) => window.setTimeout(resolve, 500));
     await testOnboardingVisible();
@@ -112,6 +143,12 @@ export const runMobileSmokeTest = async (): Promise<void> => {
       throw new Error("web QR login URL missing");
     }
     reportBootStage("qr-login-ready");
+
+    // 为第二次冷启动准备真实首页，随后由冒烟流程核对推荐区块已经渲染。
+    const settings = useSettingsStore();
+    await settings.setSystem("system.onboardingCompleted", true);
+    await settings.setSystem("system.agreedAgreementVersion", CURRENT_AGREEMENT_VERSION);
+    reportBootStage("home-smoke-prepared");
     reportBootStage("network-smoke-ready");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

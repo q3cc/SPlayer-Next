@@ -219,7 +219,11 @@ const openAlbum = (item: CoverItem): void => {
         </div>
       </section>
       <!-- 推荐歌单 / 专属歌单 -->
-      <section v-if="recommendPlaylists.length > 0" class="flex flex-col gap-3">
+      <section
+        v-if="recommendPlaylists.length > 0"
+        class="flex flex-col gap-3"
+        data-home-recommend-playlists
+      >
         <div>
           <h3 class="text-lg font-semibold text-on-surface">{{ recommendTitle }}</h3>
           <p class="mt-0.5 text-xs text-on-surface-variant/50">{{ recommendSubtitle }}</p>
@@ -235,7 +239,7 @@ const openAlbum = (item: CoverItem): void => {
         <CoverList :items="radarPlaylists" :virtual="false" :gap="16" @click="openPlaylist" />
       </section>
       <!-- 歌手推荐 -->
-      <section v-if="artists.length > 0" class="flex flex-col gap-3">
+      <section v-if="artists.length > 0" class="flex flex-col gap-3" data-home-recommend-artists>
         <div>
           <h3 class="text-lg font-semibold text-on-surface">{{ t("home.artists.title") }}</h3>
           <p class="mt-0.5 text-xs text-on-surface-variant/50">{{ t("home.artists.subtitle") }}</p>
@@ -250,7 +254,7 @@ const openAlbum = (item: CoverItem): void => {
         />
       </section>
       <!-- 新碟上架 -->
-      <section v-if="newAlbums.length > 0" class="flex flex-col gap-3">
+      <section v-if="newAlbums.length > 0" class="flex flex-col gap-3" data-home-new-albums>
         <div>
           <h3 class="text-lg font-semibold text-on-surface">{{ t("home.albums.title") }}</h3>
           <p class="mt-0.5 text-xs text-on-surface-variant/50">{{ t("home.albums.subtitle") }}</p>
