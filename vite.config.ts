@@ -20,7 +20,7 @@ const gitValue = (command: string): string => {
   }
 };
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: "./",
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -72,6 +72,16 @@ export default defineConfig({
     ],
   },
   plugins: [
+    {
+      name: "splayer-mobile-entry",
+      transformIndexHtml: {
+        order: "pre",
+        handler(html) {
+          if (mode !== "mobile") return html;
+          return html.replace("/src/entry.ts", "/src/mobile-entry.ts");
+        },
+      },
+    },
     nodePolyfills({
       include: ["buffer", "crypto", "events", "process", "stream", "util", "vm", "zlib"],
       globals: { Buffer: true, global: true, process: true },
@@ -90,4 +100,4 @@ export default defineConfig({
       resolvers: [RekaResolver(), IconsResolver({ prefix: "icon", customCollections: ["sp"] })],
     }),
   ],
-});
+}));

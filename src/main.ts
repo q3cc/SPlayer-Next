@@ -13,13 +13,7 @@ import { initPlayer, playFiles, restoreLastTrack } from "./core/player";
 import { handleOrpheus } from "./services/orpheus";
 import { installHotkeyManager } from "./core/hotkey/manager";
 import { vRipple } from "./directives/ripple";
-import { invoke } from "@tauri-apps/api/core";
-
-const reportBootStage = (stage: string): void => {
-  console.info(`[splayer-boot] ${stage}`);
-  if (!("__TAURI_INTERNALS__" in window)) return;
-  void invoke("report_boot_stage", { stage }).catch(() => undefined);
-};
+import { reportBootStage } from "./boot";
 
 const startApp = async (): Promise<void> => {
   reportBootStage("vue-setup-start");

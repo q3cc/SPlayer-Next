@@ -18,16 +18,21 @@ const scripts = fs
   .filter((name) => name.endsWith(".js"))
   .map((name) => path.join(assetsPath, name));
 
-const bootstrap = scripts.find((file) => path.basename(file).startsWith("bootstrap-"));
-
 if (scripts.length < 2) fail("移动 bundle 未分包，可能再次阻塞 iPad 主线程");
-if (!bootstrap) fail("移动桥接 bootstrap 分包不存在");
-if (fs.statSync(bootstrap).size > 100_000) {
-  fail("移动桥接 bootstrap 超过 100 KB，会拖慢 iPad 首屏启动");
-}
 
 const html = fs.readFileSync(indexPath, "utf8");
 const javascript = scripts.map((file) => fs.readFileSync(file, "utf8")).join("\n");
+const entryName = html.match(/<script[^>]+src="\.\/assets\/([^"?]+\.js)"/)?.[1];
+
+if (!entryName) fail("无法定位移动端入口脚本");
+const entryPath = path.join(assetsPath, entryName);
+const entry = fs.readFileSync(entryPath, "utf8");
+if (/import\(["']\.\/(?:bootstrap|main)-/.test(entry)) {
+  fail("移动入口仍动态导入 bootstrap 或 main，可能卡住 iOS WKWebView");
+}
+if (fs.statSync(entryPath).size > 750_000) {
+  fail("移动静态入口超过 750 KB，会拖慢 iPad 首屏启动");
+}
 
 if (!html.includes("viewport-fit=cover")) fail("缺少 iOS 全屏 viewport-fit=cover");
 if (!html.includes('class="splash-logo"')) fail("缺少内联启动 Logo");
@@ -35,5 +40,5 @@ if (!javascript.includes("splayer.mobile.settings")) fail("移动端 window.api 
 if (!javascript.includes("iPhone / iPad")) fail("移动播放器实现未进入 bundle");
 
 console.log(
-  `[VerifyMobileBundle] 通过：${scripts.length} 个 JS 分包，bootstrap ${Math.ceil(fs.statSync(bootstrap).size / 1024)} KB`,
+  `[VerifyMobileBundle] 通过：${scripts.length} 个 JS 分包，静态入口 ${Math.ceil(fs.statSync(entryPath).size / 1024)} KB`,
 );
