@@ -39,6 +39,12 @@ export interface RequestOptions {
   e_r?: boolean;
   /** 强制附加 anti-cheat token（暂未启用） */
   checkToken?: boolean;
+  /** 完整覆盖的请求头 */
+  headers?: Record<string, string>;
+  /** 跳过客户端 cookie 补全时使用的原始 Cookie 请求头 */
+  rawCookie?: string;
+  /** 是否跳过客户端 cookie 补全 */
+  skipCookieProcessing?: boolean;
 }
 
 /** 响应统一结构 */
@@ -145,7 +151,7 @@ export const createRequest = async (
   data: Record<string, unknown>,
   options: RequestOptions,
 ): Promise<RequestResponse> => {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   const ip = options.realIP || options.ip || "";
   if (ip) {
     headers["X-Real-IP"] = ip;
@@ -155,8 +161,12 @@ export const createRequest = async (
   // 归一化 cookie 到对象并做一次补全
   let cookie: Record<string, string> =
     typeof options.cookie === "string" ? cookieToJson(options.cookie) : options.cookie || {};
-  cookie = processCookieObject(cookie, uri);
-  headers["Cookie"] = cookieObjToString(cookie);
+  if (options.skipCookieProcessing) {
+    headers["Cookie"] = options.rawCookie || cookieObjToString(cookie);
+  } else {
+    cookie = processCookieObject(cookie, uri);
+    headers["Cookie"] = cookieObjToString(cookie);
+  }
 
   let crypto: CryptoMode | "" = options.crypto ?? "";
   if (crypto === "") crypto = "eapi";
@@ -172,7 +182,7 @@ export const createRequest = async (
 
   switch (crypto) {
     case "weapi": {
-      headers["Referer"] = options.domain || DOMAIN;
+      headers["Referer"] = headers["Referer"] || options.domain || DOMAIN;
       headers["User-Agent"] = options.ua || chooseUserAgent("weapi");
       data.csrf_token = csrfToken;
       encryptData = encrypt.weapi(data);

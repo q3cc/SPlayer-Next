@@ -30,6 +30,7 @@ import type { Query } from "./core/option";
 const SESSION_MUTATING: ReadonlySet<string> = new Set([
   "login",
   "login_cellphone",
+  "login_qr_key",
   "login_qr_check",
   "login_refresh",
   "logout",
@@ -81,7 +82,12 @@ const NON_CACHEABLE: ReadonlySet<string> = new Set([
 ]);
 
 /** 无需初始化网易云匿名登录态的公开接口 */
-const SESSIONLESS: ReadonlySet<string> = new Set(["audio_match"]);
+const SESSIONLESS: ReadonlySet<string> = new Set([
+  "album_new",
+  "audio_match",
+  "personalized",
+  "top_artists",
+]);
 
 /** 国内 IP 前缀池 */
 const CN_IP_PREFIXES = [

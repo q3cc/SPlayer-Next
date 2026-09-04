@@ -84,6 +84,9 @@ const startApp = async (): Promise<void> => {
   // 挂载应用
   app.mount("#app");
   reportBootStage("vue-mounted");
+  if (import.meta.env.VITE_MOBILE_SMOKE === "1") {
+    void import("./mobile/smoke").then(({ runMobileSmokeTest }) => runMobileSmokeTest());
+  }
   // 计算剩余时间
   const elapsed = performance.now() - (window.__splashStart ?? 0);
   const remaining = Math.max(0, SPLASH_ANIM_MS - elapsed);

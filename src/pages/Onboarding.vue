@@ -60,14 +60,18 @@ const complete = async (): Promise<void> => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen w-screen bg-app text-on-surface overflow-hidden">
-    <div class="app-drag-region h-16 shrink-0 flex items-center justify-end px-3">
+  <div
+    class="onboarding-page flex flex-col h-screen w-screen bg-app text-on-surface overflow-hidden"
+  >
+    <div
+      class="onboarding-titlebar app-drag-region h-16 shrink-0 flex items-center justify-end px-3"
+    >
       <WindowControls direct-quit />
     </div>
 
-    <div class="flex-1 min-h-0 flex flex-col items-center px-8 py-6">
+    <div class="onboarding-content flex-1 min-h-0 flex flex-col items-center px-8 py-6">
       <div class="w-full max-w-2xl flex-1 min-h-0 flex flex-col">
-        <header class="flex items-center gap-4 mb-8 shrink-0">
+        <header class="onboarding-progress flex items-center gap-4 mb-8 shrink-0">
           <div class="flex-1 flex items-center gap-1.5">
             <span
               v-for="(step, index) in STEPS"
@@ -87,7 +91,7 @@ const complete = async (): Promise<void> => {
           </span>
         </header>
 
-        <div class="relative flex-1 min-h-0 flex flex-col">
+        <div class="onboarding-step relative flex-1 min-h-0 flex flex-col overflow-y-auto">
           <Transition :name="direction === 'forward' ? 'slide-fwd' : 'slide-back'" mode="out-in">
             <component
               :is="currentStep.component"
@@ -101,7 +105,7 @@ const complete = async (): Promise<void> => {
       </div>
     </div>
 
-    <footer class="shrink-0 text-center pt-3 pb-5">
+    <footer class="onboarding-footer shrink-0 text-center pt-3 pb-5">
       <span class="text-xs text-on-surface-variant/40">{{ t("onboarding.footer") }}</span>
     </footer>
   </div>
@@ -131,5 +135,39 @@ const complete = async (): Promise<void> => {
 .slide-back-leave-to {
   opacity: 0;
   transform: translateX(24px);
+}
+
+:global(.mobile) .onboarding-page {
+  height: 100dvh;
+}
+
+:global(.mobile) .onboarding-titlebar {
+  display: none;
+}
+
+:global(.mobile) .onboarding-content {
+  padding-top: calc(env(safe-area-inset-top) + 1.5rem);
+  padding-bottom: 0.75rem;
+}
+
+:global(.mobile) .onboarding-footer {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+}
+
+@media (max-width: 600px), (max-height: 700px) {
+  :global(.mobile) .onboarding-content {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    padding-top: calc(env(safe-area-inset-top) + 1rem);
+  }
+
+  :global(.mobile) .onboarding-progress {
+    margin-bottom: 1rem;
+  }
+
+  :global(.mobile) .onboarding-footer {
+    padding-top: 0.5rem;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
 }
 </style>

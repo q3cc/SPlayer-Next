@@ -53,17 +53,13 @@ export const qrCheck = async (key: string): Promise<QrCheckResult> => {
   };
 };
 
-/**
- * 二维码内容
- * @param key 二维码 key
- * @returns 二维码内容
- */
-export const qrContent = (key: string): string => `https://music.163.com/login?codekey=${key}`;
-
 export const neteaseQrLoginAdapter: QrLoginAdapter = {
   create: async () => {
     const key = await qrKey();
-    return { key, content: qrContent(key) };
+    const body = await neteaseApi.login_qr_create({ key, timestamp: Date.now() });
+    const content = body?.data?.qrurl;
+    if (!content) throw new Error("qr url missing");
+    return { key, content };
   },
   check: async (key) => {
     const result = await qrCheck(key);

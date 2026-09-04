@@ -2,15 +2,20 @@
  * 获取二维码登录 unikey
  */
 
-import { createOption } from "../core/option";
 import type { NeteaseModule } from "../core/types";
+import { createWebQrRequest, mergeCookieLists } from "../core/webQrLogin";
 
 const loginQrKey: NeteaseModule = async (query, request) => {
-  const result = await request("/api/login/qrcode/unikey", { type: 3 }, createOption(query));
+  const web = createWebQrRequest(query);
+  const result = await request(
+    "/api/login/qrcode/unikey",
+    { type: 1, noCheckToken: true, ...(query.lastUnikey ? { lastUnikey: query.lastUnikey } : {}) },
+    web.options,
+  );
   return {
     status: 200,
     body: { data: result.body, code: 200 },
-    cookie: result.cookie,
+    cookie: mergeCookieLists(web.cookies, result.cookie),
   };
 };
 

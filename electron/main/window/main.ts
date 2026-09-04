@@ -10,7 +10,7 @@ import { handleCacheProtocolOnPartition, MAIN_PARTITION } from "@main/utils/prot
 import { isAppQuitting } from "@main/utils/lifecycle";
 import { broadcast } from "@main/utils/broadcast";
 import { isWin } from "@main/utils/config";
-import { CURRENT_AGREEMENT_VERSION } from "@shared/constants/agreement";
+import { resolveInitialRoute } from "@shared/utils/initialRoute";
 
 /** 判断是否应用内部导航 */
 const isInternalNavigation = (url: string): boolean => {
@@ -155,13 +155,10 @@ export const createMainWindow = (): BrowserWindow => {
     openExternalSafe(url);
   });
 
-  // 首启引导路径:未完成向导 → 向导;协议版本落后 → 仅协议更新页
-  let initialHash = "";
-  if (!store.get("system.onboardingCompleted")) {
-    initialHash = "/onboarding";
-  } else if ((store.get("system.agreedAgreementVersion") as number) < CURRENT_AGREEMENT_VERSION) {
-    initialHash = "/agreement-update";
-  }
+  const initialHash = resolveInitialRoute({
+    onboardingCompleted: store.get("system.onboardingCompleted"),
+    agreedAgreementVersion: store.get("system.agreedAgreementVersion"),
+  });
 
   // 基于 electron-vite cli 的 HMR
   if (is.dev && process.env["ELECTRON_RENDERER_URL"]) {

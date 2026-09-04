@@ -1,8 +1,6 @@
 import type { ApiCallResponse, ApiPlatform, ApisApi } from "@shared/types/apis";
 
-// The provider implementations include sizeable crypto shims. Loading them while the
-// WebView is painting its first frame can stall older iPads, so defer each provider
-// until the user actually performs a network operation.
+// 平台实现包含较大的加密垫片，延迟到首次网络请求时加载，避免阻塞移动端首帧。
 const loadNetease = () => import("@main/apis/netease");
 const loadQQMusic = () => import("@main/apis/qqmusic");
 const loadKugou = () => import("@main/apis/kugou");
@@ -83,6 +81,6 @@ const setCookie = async (
 export const mobileProviders: ApisApi = {
   call,
   clearSession,
-  openLoginWeb: async () => ({ ok: false, error: "use QR or cookie login on iOS" }),
+  openLoginWeb: async () => ({ ok: false, error: "use QR or cookie login on mobile" }),
   setCookie,
 };

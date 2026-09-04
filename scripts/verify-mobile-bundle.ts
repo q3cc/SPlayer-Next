@@ -22,9 +22,8 @@ if (scripts.length < 2) fail("移动 bundle 未分包，可能再次阻塞 iPad 
 
 const html = fs.readFileSync(indexPath, "utf8");
 const javascript = scripts.map((file) => fs.readFileSync(file, "utf8")).join("\n");
-const entryName = html.match(/<script[^>]+src="\.\/assets\/([^"?]+\.js)"/)?.[1];
-
-if (!entryName) fail("无法定位移动端入口脚本");
+const entryName =
+  html.match(/<script[^>]+src="\.\/assets\/([^"?]+\.js)"/)?.[1] ?? fail("无法定位移动端入口脚本");
 const entryPath = path.join(assetsPath, entryName);
 const entry = fs.readFileSync(entryPath, "utf8");
 if (/import\(["']\.\/(?:bootstrap|main)-/.test(entry)) {

@@ -1,56 +1,118 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { join } from "@tauri-apps/api/path";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readDir, remove, stat } from "@tauri-apps/plugin-fs";
 import type { AlbumSummary, ArtistSummary, LibraryApi, ScanProgress } from "@shared/types/library";
 import type { Track } from "@shared/types/player";
 
-const STORAGE_KEY = "splayer.mobile.library";
-const DIRECTORY_LABEL = "iOS Music";
+const TRACKS_STORAGE_KEY = "splayer.mobile.library";
+const DIRECTORIES_STORAGE_KEY = "splayer.mobile.scanDirs";
+const AUDIO_EXTENSIONS = new Set(["mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "ape"]);
 const listeners = new Set<(progress: ScanProgress) => void>();
 
-const readTracks = (): Track[] => {
+const readJson = <T>(key: string, fallback: T): T => {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as Track[];
+    return JSON.parse(localStorage.getItem(key) ?? "") as T;
   } catch {
-    return [];
+    return fallback;
   }
 };
 
-let tracks = readTracks();
+let tracks = readJson<Track[]>(TRACKS_STORAGE_KEY, []);
+let scanDirs = readJson<string[]>(DIRECTORIES_STORAGE_KEY, []);
 
-const persist = (): void => localStorage.setItem(STORAGE_KEY, JSON.stringify(tracks));
+const persist = (): void => {
+  localStorage.setItem(TRACKS_STORAGE_KEY, JSON.stringify(tracks));
+  localStorage.setItem(DIRECTORIES_STORAGE_KEY, JSON.stringify(scanDirs));
+};
 const success = <T>(data?: T) => ({ success: true as const, data });
 const announce = (progress: ScanProgress): void =>
   listeners.forEach((listener) => listener(progress));
 
 const pathName = (path: string): string => decodeURIComponent(path.split("/").pop() ?? path);
 const withoutExtension = (name: string): string => name.replace(/\.[^.]+$/, "");
+const extensionOf = (path: string): string => path.split(".").pop()?.toLocaleLowerCase() ?? "";
 const idFor = (path: string): string => {
   let hash = 2166136261;
-  for (let i = 0; i < path.length; i++) hash = Math.imul(hash ^ path.charCodeAt(i), 16777619);
-  return `ios-${(hash >>> 0).toString(16)}`;
+  for (let index = 0; index < path.length; index += 1) {
+    hash = Math.imul(hash ^ path.charCodeAt(index), 16777619);
+  }
+  return `mobile-${(hash >>> 0).toString(16)}`;
 };
 
-const importFiles = (paths: string[]): void => {
-  const known = new Set(tracks.map((track) => track.path));
-  const now = Date.now();
-  const additions = paths
-    .filter((path) => !known.has(path))
-    .map<Track>((path) => ({
-      id: idFor(path),
-      source: "local",
-      path,
-      title: withoutExtension(pathName(path)),
-      artists: [{ name: "Unknown Artist" }],
-      duration: 0,
-      mtime: now,
-      ctime: now,
-    }));
-  tracks = [...tracks, ...additions];
+const childPath = async (parent: string, name: string): Promise<string> => {
+  if (parent.startsWith("file:")) {
+    const base = parent.endsWith("/") ? parent : `${parent}/`;
+    return new URL(encodeURIComponent(name), base).toString();
+  }
+  return join(parent, name);
+};
+
+const listAudioFiles = async (root: string): Promise<string[]> => {
+  const files: string[] = [];
+  const pending = [root];
+  while (pending.length) {
+    const current = pending.pop();
+    if (!current) continue;
+    for (const entry of await readDir(current)) {
+      const path = await childPath(current, entry.name);
+      if (entry.isDirectory) pending.push(path);
+      else if (entry.isFile && AUDIO_EXTENSIONS.has(extensionOf(entry.name))) files.push(path);
+    }
+  }
+  return files;
+};
+
+const trackFromFile = async (path: string): Promise<Track> => {
+  const info = await stat(path);
+  const fallbackTime = Date.now();
+  return {
+    id: idFor(path),
+    source: "local",
+    path,
+    title: withoutExtension(pathName(path)),
+    artists: [{ name: "Unknown Artist" }],
+    duration: 0,
+    fileSize: info.size,
+    mtime: info.mtime?.getTime() ?? fallbackTime,
+    ctime: info.birthtime?.getTime() ?? fallbackTime,
+  };
+};
+
+/**
+ * 扫描移动端系统目录并转换为公共曲目结构
+ * @param directories - 系统文件选择器返回的目录
+ * @returns 可直接交给公共曲库 store 的曲目
+ */
+export const scanMobileDirectories = async (directories: readonly string[]): Promise<Track[]> => {
+  const paths = (await Promise.all(directories.map(listAudioFiles))).flat();
+  const next: Track[] = [];
+  announce({ phase: "scanning", total: paths.length, scanned: 0 });
+  for (const [index, path] of paths.entries()) {
+    next.push(await trackFromFile(path));
+    announce({
+      phase: "scanning",
+      total: paths.length,
+      scanned: index + 1,
+      current: pathName(path),
+    });
+  }
+  return next;
+};
+
+const scanDirectories = async (): Promise<void> => {
+  tracks = await scanMobileDirectories(scanDirs);
   persist();
+  announce({ phase: "done", total: tracks.length, scanned: tracks.length });
+};
+
+const isWithin = (path: string, directory: string): boolean => {
+  const prefix = directory.endsWith("/") ? directory : `${directory}/`;
+  return path === directory || path.startsWith(prefix);
 };
 
 export const resolveMobileAudioSource = (source: string): string => {
-  if (/^(https?|blob|data|asset):/i.test(source)) return source;
+  if (/^(https?|blob|data|asset|file):/i.test(source)) return source;
   return convertFileSrc(source);
 };
 
@@ -59,8 +121,14 @@ export const getMobileTrack = (id: string): Track | undefined =>
 
 export const mobileLibrary: LibraryApi = {
   scan: async () => {
-    announce({ phase: "done", total: tracks.length, scanned: tracks.length });
-    return success();
+    try {
+      await scanDirectories();
+      return success();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      announce({ phase: "error", total: 0, scanned: 0, error: message });
+      return { success: false, error: message };
+    }
   },
   cancelScan: async () => success(),
   getTracks: async () => success(tracks),
@@ -118,37 +186,40 @@ export const mobileLibrary: LibraryApi = {
     success([...tracks].sort(() => Math.random() - 0.5).slice(0, limit)),
   isScanning: async () => success(false),
   addScanDir: async () => {
-    const selected = await open({
-      multiple: true,
-      directory: false,
-      filters: [
-        {
-          name: "Audio",
-          extensions: ["mp3", "m4a", "aac", "wav", "flac", "ogg", "opus", "ape"],
-        },
-      ],
-    });
-    const paths = selected == null ? [] : Array.isArray(selected) ? selected : [selected];
-    if (!paths.length) return { success: false as const, error: "canceled" };
-    importFiles(paths);
-    announce({ phase: "done", total: paths.length, scanned: paths.length });
-    return success(DIRECTORY_LABEL);
+    const selected = await open({ directory: true, multiple: false, fileAccessMode: "copy" });
+    if (!selected) return { success: false, error: "canceled" };
+    if (!scanDirs.includes(selected)) {
+      scanDirs = [...scanDirs, selected];
+      persist();
+    }
+    return success(selected);
   },
-  removeScanDir: async () => {
-    tracks = [];
+  removeScanDir: async (directory) => {
+    scanDirs = scanDirs.filter((item) => item !== directory);
+    tracks = tracks.filter((track) => !track.path || !isWithin(track.path, directory));
     persist();
     return success();
   },
-  getScanDirs: async () => success(tracks.length ? [DIRECTORY_LABEL] : []),
+  getScanDirs: async () => success(scanDirs),
   deleteTracks: async (paths) => {
-    const deleted = tracks.filter((track) => track.path && paths.includes(track.path)).length;
-    tracks = tracks.filter((track) => !track.path || !paths.includes(track.path));
+    let deleted = 0;
+    for (const path of paths) {
+      try {
+        await remove(path);
+        deleted += 1;
+      } catch {}
+    }
+    const deletedPaths = new Set(paths);
+    tracks = tracks.filter((track) => !track.path || !deletedPaths.has(track.path));
     persist();
     return success({ deleted, failed: paths.length - deleted });
   },
-  readTags: async () => ({ success: false, error: "tag editing is not available on iOS" }),
-  writeTags: async () => ({ success: false, error: "tag editing is not available on iOS" }),
-  pickCoverImage: async () => ({ success: false, error: "cover picking is not available on iOS" }),
+  readTags: async () => ({ success: false, error: "tag editing is not available on mobile" }),
+  writeTags: async () => ({ success: false, error: "tag editing is not available on mobile" }),
+  pickCoverImage: async () => ({
+    success: false,
+    error: "cover picking is not available on mobile",
+  }),
   fetchArtistAvatar: async () => success(null),
   prefetchArtistAvatars: async () => success({}),
   onScanProgress: (callback) => {
