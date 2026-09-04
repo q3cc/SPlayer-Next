@@ -1,4 +1,3 @@
-import { Buffer } from "buffer";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { save, open } from "@tauri-apps/plugin-dialog";
@@ -9,17 +8,103 @@ import { defaultHotkeyConfig } from "@shared/defaults/hotkeys";
 import type { DownloadProgress, DownloadRequest, DownloadTask } from "@shared/types/download";
 import type { HotkeyConfig } from "@shared/types/hotkey";
 import type { NowPlayingSnapshot, NowPlayingUpdatePayload } from "@shared/types/nowPlaying";
-import type { PlayerEvent, Track } from "@shared/types/player";
+import type { PlayerApi, PlayerEvent, Track } from "@shared/types/player";
+import type { StreamingApi } from "@shared/types/streaming";
 import { store } from "./shims/store";
 import { testNetworkProxy } from "./shims/proxy";
 import { mobileLibrary } from "./library";
 import { mobileComments } from "./comments";
 import { mobileLyrics } from "./lyrics";
-import { mobilePlayer } from "./player";
 import { mobilePlaylist } from "./playlist";
 import { mobileProviders } from "./providers";
 import { mobileStats } from "./stats";
-import { mobileStreaming } from "./streaming";
+
+let playerPromise: Promise<PlayerApi> | undefined;
+const playerEventListeners = new Set<(event: PlayerEvent) => void>();
+let playerEventsInstalled = false;
+
+const loadPlayer = async (): Promise<PlayerApi> => {
+  playerPromise ??= import("./player").then(({ mobilePlayer }) => mobilePlayer);
+  const player = await playerPromise;
+  if (!playerEventsInstalled) {
+    playerEventsInstalled = true;
+    player.onEvent((event) => playerEventListeners.forEach((listener) => listener(event)));
+  }
+  return player;
+};
+
+const mobilePlayer = new Proxy(
+  {},
+  {
+    get: (_, property: string) => {
+      if (property === "onEvent") {
+        return (listener: (event: PlayerEvent) => void) => {
+          playerEventListeners.add(listener);
+          void loadPlayer();
+          return () => playerEventListeners.delete(listener);
+        };
+      }
+      if (property === "syncPlayMode" || property === "syncLikeState") {
+        return (...args: unknown[]) => {
+          void loadPlayer().then((player) =>
+            Reflect.apply(
+              player[property as keyof PlayerApi] as (...values: unknown[]) => unknown,
+              player,
+              args,
+            ),
+          );
+        };
+      }
+      return (...args: unknown[]) =>
+        loadPlayer().then((player) =>
+          Reflect.apply(
+            player[property as keyof PlayerApi] as (...values: unknown[]) => unknown,
+            player,
+            args,
+          ),
+        );
+    },
+  },
+) as PlayerApi;
+
+let streamingPromise: Promise<StreamingApi> | undefined;
+const streamingListeners = new Set<(serverId: string) => void>();
+let streamingEventsInstalled = false;
+
+const loadStreaming = async (): Promise<StreamingApi> => {
+  streamingPromise ??= import("./streaming").then(({ mobileStreaming }) => mobileStreaming);
+  const streaming = await streamingPromise;
+  if (!streamingEventsInstalled) {
+    streamingEventsInstalled = true;
+    streaming.onLibraryUpdated((serverId) =>
+      streamingListeners.forEach((listener) => listener(serverId)),
+    );
+  }
+  return streaming;
+};
+
+const mobileStreaming = new Proxy(
+  {},
+  {
+    get: (_, property: string) => {
+      if (property === "onLibraryUpdated") {
+        return (listener: (serverId: string) => void) => {
+          streamingListeners.add(listener);
+          void loadStreaming();
+          return () => streamingListeners.delete(listener);
+        };
+      }
+      return (...args: unknown[]) =>
+        loadStreaming().then((streaming) =>
+          Reflect.apply(
+            streaming[property as keyof StreamingApi] as (...values: unknown[]) => unknown,
+            streaming,
+            args,
+          ),
+        );
+    },
+  },
+) as StreamingApi;
 
 const noop = (): void => undefined;
 const unsubscribe = (): (() => void) => noop;
@@ -194,7 +279,10 @@ const api = {
       try {
         const response = await tauriFetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return { success: true, data: Buffer.from(await response.arrayBuffer()) };
+        return {
+          success: true,
+          data: new Uint8Array(await response.arrayBuffer()) as unknown as Buffer,
+        };
       } catch (error) {
         return { success: false, error: error instanceof Error ? error.message : String(error) };
       }
