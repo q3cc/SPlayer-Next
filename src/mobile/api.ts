@@ -556,8 +556,6 @@ const api = {
 export const installMobileApi = (): void => {
   window.api = api as unknown as Window["api"];
   document.documentElement.classList.add("mobile", "ios");
-  // Calling the deep-link plugin while WKWebView is still evaluating its
-  // initial module graph can block first paint on iOS. By this point the API
-  // is ready; initialize native listeners after Vue has had time to mount.
+  // WKWebView 解析首屏模块时调用 deep-link 插件可能阻塞渲染，延后注册原生监听。
   window.setTimeout(initializeDeepLinks, 1_000);
 };
