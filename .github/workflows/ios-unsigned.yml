@@ -176,14 +176,14 @@ jobs:
 
               for _ in {1..20}; do
                 if [[ -f "$boot_log" ]] && grep -Fxq 'native-entry' "$boot_log"; then
-                  kill "$launcher_pid" 2>/dev/null || true
+                  kill -KILL "$launcher_pid" 2>/dev/null || true
                   wait "$launcher_pid" 2>/dev/null || true
                   return 0
                 fi
                 sleep 1
               done
 
-              kill "$launcher_pid" 2>/dev/null || true
+              kill -KILL "$launcher_pid" 2>/dev/null || true
               wait "$launcher_pid" 2>/dev/null || true
               printf '\nlaunch attempt %s did not reach native-entry\n' "$attempt" >> "$output"
             done
