@@ -128,11 +128,14 @@ jobs:
             timed 20 screencapture -x "ios-smoke/$name-host.png" || true
           }
 
-          app_path="src-tauri/gen/apple/build/$IOS_SIMULATOR_TARGET/SPlayer Next.app"
-          if [[ -z "$app_path" ]]; then
+          app_path="$(find src-tauri/gen/apple/build -type d -name '*.app' \
+            ! -path '*.xcarchive/*' -print -quit)"
+          if [[ -z "$app_path" || ! -d "$app_path" ]]; then
             echo "Tauri did not produce an iOS Simulator app" >&2
+            find src-tauri/gen/apple/build -maxdepth 4 -print >&2 || true
             exit 1
           fi
+          app_path="$(cd "$(dirname "$app_path")" && pwd)/$(basename "$app_path")"
 
           device_id="$(xcrun simctl list devices available | sed -nE '/iPad/ s/.*\(([0-9A-F-]{36})\).*/\1/p' | head -1)"
           if [[ -z "$device_id" ]]; then
