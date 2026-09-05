@@ -244,6 +244,7 @@ const api = {
     set: async (key: string, value: unknown) => {
       if (key === "system.diagnosticLogging") await setDiagnosticsEnabled(value === true);
       store.set(key, value);
+      if (key === "update.channel") void mobileUpdate.check(true);
       if (key.startsWith("media.")) mobileMediaSession.refresh();
       if (key === "desktopLyric" || key.startsWith("desktopLyric.")) await mobileLyricPip.update();
     },

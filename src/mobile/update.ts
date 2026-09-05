@@ -23,6 +23,7 @@ const repoUrl = __APP_REPO_URL__.replace(/\/$/, "");
 const listeners = new Set<(event: UpdateEvent) => void>();
 let downloadPage = `${repoUrl}/releases`;
 let checking: Promise<void> | undefined;
+let checkingChannel: string | undefined;
 let manualCheck = false;
 let selected: { url: string; size: number; digest?: string; meta: UpdateMeta } | undefined;
 let downloading = false;
@@ -49,13 +50,17 @@ export const mobileUpdate: UpdateApi = {
     if (downloading) return Promise.resolve();
     if (!manual && !store.get("update.autoCheck")) return Promise.resolve();
     manualCheck ||= manual;
-    if (checking) return checking;
+    const channel = store.get("update.channel");
+    if (checking)
+      return checkingChannel === channel
+        ? checking
+        : checking.then(() => mobileUpdate.check(manual));
+    checkingChannel = channel;
     listeners.forEach((listener) => listener({ type: "checking" }));
     checking = (async () => {
       try {
         const repository = new URL(repoUrl);
         if (repository.hostname !== "github.com") throw new Error("更新仓库必须位于 GitHub");
-        const channel = store.get("update.channel");
         const response = await fetchWithProxy(
           `https://api.github.com/repos${repository.pathname}/releases${channel === "action" ? "/tags/action-latest" : "?per_page=100"}`,
           {
@@ -69,6 +74,7 @@ export const mobileUpdate: UpdateApi = {
         }
         if (!response.ok) throw new Error(`GitHub HTTP ${response.status}`);
         const payload = await response.json();
+        if (channel !== store.get("update.channel")) return;
         const releases: Release[] = channel === "action" ? [payload] : payload;
         const current = versionParts(__APP_VERSION__);
         if (!current || !Array.isArray(releases)) throw new Error("无法识别更新版本");

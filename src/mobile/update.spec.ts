@@ -44,6 +44,29 @@ const release = (tag = "ios-v1.1.0", extra = {}) => ({
 });
 
 describe("iOS 检查当前仓库更新", () => {
+  it("检查途中切换通道时忽略旧响应，再请求新通道", async () => {
+    const { mobileUpdate } = await import("./update");
+    const listener = vi.fn();
+    mobileUpdate.onEvent(listener);
+    let channel = "stable";
+    mocks.get.mockImplementation((key) => (key === "update.channel" ? channel : true));
+    let resolve!: (value: Response) => void;
+    mocks.fetch.mockReturnValueOnce(
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+    );
+    const first = mobileUpdate.check(true);
+    channel = "action";
+    mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 404 }));
+    const second = mobileUpdate.check(true);
+    resolve(Response.json([release()]));
+    await Promise.all([first, second]);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.fetch.mock.calls[1][0]).toContain("/tags/action-latest");
+    expect(listener).not.toHaveBeenCalledWith(expect.objectContaining({ type: "available" }));
+    expect(listener).toHaveBeenLastCalledWith({ type: "notAvailable", manual: true });
+  });
   it("立即更新传给原生下载器，转发进度，完成后打开分享并清理监听", async () => {
     const { mobileUpdate } = await import("./update");
     const listener = vi.fn();

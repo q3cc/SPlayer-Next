@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img alt="SPlayer-Next logo" width="120" height="120" src="public/icons/favicon.png" />
@@ -17,13 +16,13 @@
 
 ## 特性
 
-* **多端适配**：支持 iPhone 紧凑布局与 iPad 横屏大屏视图，适配动态岛、刘海屏及前台调度（Stage Manager）。
-* **在线曲库**：支持网易云扫码登录、歌单浏览与每日推荐，本地持久化保存登录状态。
-* **本地音乐**：支持从“文件”App 批量导入本地音频至应用隔离沙盒。
-* **后台与控制中心**：支持锁屏封面展示、后台音频播放与系统级多媒体控制。
-* **歌词体验**：
-  * **画中画小窗歌词**：支持单/双行、逐字高亮、音译与翻译显示，支持大小与颜色自定义。
-  * **系统标题歌词**：支持将实时歌词临时映射为锁屏/控制中心的媒体标题。
+- **多端适配**：支持 iPhone 紧凑布局与 iPad 横屏大屏视图，适配动态岛、刘海屏及前台调度（Stage Manager）。
+- **在线曲库**：支持网易云扫码登录、歌单浏览与每日推荐，本地持久化保存登录状态。
+- **本地音乐**：支持从“文件”App 批量导入本地音频至应用隔离沙盒。
+- **后台与控制中心**：支持锁屏封面展示、后台音频播放与系统级多媒体控制。
+- **歌词体验**：
+  - **画中画小窗歌词**：支持单/双行、逐字高亮、音译与翻译显示，支持大小与颜色自定义。
+  - **系统标题歌词**：支持将实时歌词临时映射为锁屏/控制中心的媒体标题。
 
 ---
 
@@ -42,7 +41,8 @@
 **Q: 本地歌曲导入后，原文件会受影响吗？**  
 不会。音乐文件会被复制进应用的沙盒目录（`Documents/Imported Music`），与原文件完全隔离，删除应用或原文件互不影响。
 
-**Q: 遇到登录、闪退或播放异常，如何提取日志？**  
+**Q: 遇到登录、闪退或播放异常，如何提取日志？**
+
 1. 进入“设置 → 通用 → 调试”开启“日志记录”，随后复现问题。
 2. 打开 iOS 自带的“文件”App，依次进入：`我的 iPhone/iPad → SPlayer Next → logs`。
 3. 导出对应时间的 `.log` 文件，并在 [提交 Issue](https://github.com/q3cc/SPlayer-Next-ios/issues) 时附上日志、机型与系统版本。
@@ -64,17 +64,15 @@ pnpm ios:build --ci --no-sign
 
 ```
 
-* 仅编译前端：`pnpm mobile:build`
-* 本地联机调试：`pnpm ios:dev`
-* 详见完整的 [iOS 构建指南](https://www.google.com/search?q=docs/ios-unsigned.md)。
+- 仅编译前端：`pnpm mobile:build`
+- 本地联机调试：`pnpm ios:dev`
+- 详见完整的 [iOS 构建指南](https://www.google.com/search?q=docs/ios-unsigned.md)。
 
 ---
 
 ## 开源协议与致谢
 
-* 本项目沿用上游项目的 **AGPL-3.0** 开源许可协议。
-* 感谢 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及所有上游贡献者。
-* 核心依赖：[applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)、[NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)、[Tauri](https://github.com/tauri-apps/tauri)。
-* 鸣谢社区：[LinuxDO](https://linux.do/)。
-
-
+- 本项目沿用上游项目的 **AGPL-3.0** 开源许可协议。
+- 感谢 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及所有上游贡献者。
+- 核心依赖：[applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)、[NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)、[Tauri](https://github.com/tauri-apps/tauri)。
+- 鸣谢社区：[LinuxDO](https://linux.do/)。
