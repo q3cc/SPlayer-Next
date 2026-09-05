@@ -12,6 +12,8 @@ import type {
 import { resolveMobileAudioSource } from "./library";
 import { mobileMediaSession } from "./mediaSession";
 import { mobileLyricPip } from "./lyricPip";
+import { isTauri } from "@tauri-apps/api/core";
+import { createNativePlayer } from "./nativePlayer";
 
 type PlayerListener = (event: PlayerEvent) => void;
 
@@ -115,7 +117,7 @@ const installMediaSession = (): void => {
   });
 };
 
-installMediaSession();
+if (!isTauri()) installMediaSession();
 
 const waitUntilReady = (): Promise<void> =>
   new Promise((resolve, reject) => {
@@ -184,7 +186,7 @@ const ok = (): IpcResponse => ({ success: true });
 const device: AudioDevice = { id: "ios-default", name: "iPhone / iPad", isDefault: true };
 const emptyFft = (): FftData => ({ ldata: Array(64).fill(0), rdata: Array(64).fill(0) });
 
-export const mobilePlayer: PlayerApi = {
+const webPlayer: PlayerApi = {
   load,
   play: async () => {
     try {
@@ -263,3 +265,5 @@ export const mobilePlayer: PlayerApi = {
     return () => listeners.delete(callback);
   },
 };
+
+export const mobilePlayer = isTauri() ? createNativePlayer(webPlayer) : webPlayer;

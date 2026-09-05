@@ -88,6 +88,12 @@ jobs:
         if: matrix.kind == 'ipa'
         run: python3 scripts/ios-update-tests/test_download.py
 
+      - name: Test native equalizer audio output
+        if: matrix.kind == 'ipa'
+        run: |
+          swiftc src-tauri/plugins/native-audio/ios/Sources/AudioEffects.swift scripts/ios-audio-tests/main.swift -o "$RUNNER_TEMP/splayer-audio-tests"
+          "$RUNNER_TEMP/splayer-audio-tests"
+
       - name: Install the SPlayer iOS icon set
         shell: bash
         run: |

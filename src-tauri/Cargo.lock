@@ -3733,6 +3733,7 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-ipa-update",
  "tauri-plugin-lyric-pip",
+ "tauri-plugin-native-audio",
  "tauri-plugin-opener",
  "tauri-plugin-os",
  "tauri-plugin-store",
@@ -4167,6 +4168,14 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-lyric-pip"
+version = "0.1.0"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
+]
+
+[[package]]
+name = "tauri-plugin-native-audio"
 version = "0.1.0"
 dependencies = [
  "tauri",

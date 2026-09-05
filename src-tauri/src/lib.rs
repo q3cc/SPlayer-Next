@@ -44,6 +44,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_ipa_update::init())
         .plugin(tauri_plugin_lyric_pip::init())
+        .plugin(tauri_plugin_native_audio::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_store::Builder::default().build())

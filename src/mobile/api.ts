@@ -244,6 +244,17 @@ const api = {
     set: async (key: string, value: unknown) => {
       if (key === "system.diagnosticLogging") await setDiagnosticsEnabled(value === true);
       store.set(key, value);
+      if (key === "player.equalizer" || key.startsWith("player.equalizer.")) {
+        const player = await loadPlayer();
+        const equalizer = store.get("player.equalizer");
+        const results = [
+          await player.setEqualizerBands([...equalizer.bands]),
+          await player.setPreampGain(equalizer.preamp),
+          await player.setEqualizerEnabled(equalizer.enabled),
+        ];
+        const failed = results.find((result) => !result.success);
+        if (failed) throw new Error(failed.error || "音效设置失败");
+      }
       if (key === "update.channel") void mobileUpdate.check(true);
       if (key.startsWith("media.")) mobileMediaSession.refresh();
       if (key === "desktopLyric" || key.startsWith("desktopLyric.")) await mobileLyricPip.update();

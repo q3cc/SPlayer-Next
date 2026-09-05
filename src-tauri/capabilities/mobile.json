@@ -10,6 +10,7 @@
     "dialog:default",
     "lyric-pip:default",
     "ipa-update:default",
+    "native-audio:default",
     "fs:default",
     "fs:allow-appcache-read-recursive",
     "fs:allow-appcache-write-recursive",

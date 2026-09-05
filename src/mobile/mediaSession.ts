@@ -3,6 +3,7 @@ import type { Track } from "@shared/types/player";
 import { findLyricIndex } from "@shared/utils/lyric";
 import { originalArtwork } from "@shared/utils/artwork";
 import { store } from "./shims/store";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 let track: Track | null = null;
 let lyrics: NowPlayingUpdatePayload | null = null;
@@ -13,6 +14,8 @@ let artworkKey = "";
 let artworkCover = "";
 let artworkSize = "";
 let pendingArtwork: HTMLImageElement | null = null;
+let nativeKey = "";
+let nativeLyrics: NowPlayingUpdatePayload["lyric"] | undefined;
 
 /** 只保留当前歌曲的一次高清封面加载，切歌后释放旧图片请求。 */
 const clearArtwork = (): void => {
@@ -60,11 +63,69 @@ const prepareArtwork = (value: Track): void => {
 
 /** 复用公共解析结果与音频时间事件，只在显示内容变化时更新系统卡片。 */
 const refresh = (): void => {
-  if (!("mediaSession" in navigator)) return;
+  if (!("mediaSession" in navigator) && !isTauri()) return;
   if (!track || !store.get("media.systemMediaControls")) {
     clearArtwork();
-    navigator.mediaSession.metadata = null;
+    if ("mediaSession" in navigator) navigator.mediaSession.metadata = null;
     lastMetadata = null;
+    nativeKey = "";
+    nativeLyrics = undefined;
+    if (isTauri())
+      void invoke("plugin:native-audio|metadata", {
+        title: "",
+        artist: "",
+        album: "",
+        cover: "",
+        enabled: false,
+      }).catch((error) => console.warn("[native-audio] 清除系统卡片失败", error));
+    return;
+  }
+  if (isTauri()) {
+    const artist = track.artists.map((item) => item.name).join(" / ");
+    const dynamic = store.get("media.dynamicLyrics") === true;
+    const lines =
+      lyrics?.track?.id === track.id && lyrics.track.source === track.source
+        ? lyrics.lyric
+        : undefined;
+    const cover = originalArtwork(track) || track.cover || "";
+    const key = JSON.stringify([
+      track.source,
+      track.id,
+      track.title,
+      artist,
+      track.album?.name,
+      cover,
+      dynamic,
+      offset,
+    ]);
+    if (key === nativeKey && lines === nativeLyrics) return;
+    nativeKey = key;
+    nativeLyrics = lines;
+    void invoke("plugin:native-audio|metadata", {
+      title: track.title,
+      artist,
+      album: track.album?.name ?? "",
+      cover,
+      enabled: true,
+      dynamic,
+      offset,
+      lines: dynamic
+        ? (lines ?? [])
+            .filter((line) => !line.isBG)
+            .map((line) => ({
+              start: line.startTime,
+              end: line.endTime,
+              text: line.words
+                .map((word) => word.word)
+                .join("")
+                .trim(),
+            }))
+            .filter((line) => line.text)
+        : [],
+    }).catch((error) => {
+      if (nativeKey === key) nativeKey = "";
+      console.warn("[native-audio] 更新系统卡片失败", error);
+    });
     return;
   }
   prepareArtwork(track);
