@@ -145,10 +145,12 @@ const useTrackPointer = (
 ): {
   onDown: (event: PointerEvent) => void;
   onMove: (event: PointerEvent) => void;
+  onEnd: (event: PointerEvent) => void;
 } => {
+  let pointerId: number | undefined;
   const run = (event: PointerEvent): void => {
     const rect = targetRef.value?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect || rect.width === 0 || rect.height === 0) return;
     const x = clamp(event.clientX - rect.left, 0, rect.width) / rect.width;
     const y = clamp(event.clientY - rect.top, 0, rect.height) / rect.height;
     apply(x, y);
@@ -156,13 +158,19 @@ const useTrackPointer = (
   };
   return {
     onDown: (event) => {
-      if (props.disabled) return;
+      if (props.disabled || pointerId !== undefined || event.button !== 0) return;
+      pointerId = event.pointerId;
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
       run(event);
     },
     onMove: (event) => {
-      if ((event.buttons & 1) === 0) return;
+      if (props.disabled || event.pointerId !== pointerId) return;
       run(event);
+    },
+    onEnd: (event) => {
+      if (event.pointerId !== pointerId) return;
+      if (!props.disabled && event.type === "pointerup") run(event);
+      pointerId = undefined;
     },
   };
 };
@@ -216,6 +224,9 @@ const isSwatchActive = (swatch: string): boolean => {
           :style="{ background: svBackground }"
           @pointerdown="sv.onDown"
           @pointermove="sv.onMove"
+          @pointerup="sv.onEnd"
+          @pointercancel="sv.onEnd"
+          @lostpointercapture="sv.onEnd"
         >
           <div
             class="absolute w-3.5 h-3.5 rounded-full border-2 border-solid border-white shadow-[0_1px_3px_rgba(0,0,0,0.5)] pointer-events-none"
@@ -236,6 +247,9 @@ const isSwatchActive = (swatch: string): boolean => {
           }"
           @pointerdown="hue.onDown"
           @pointermove="hue.onMove"
+          @pointerup="hue.onEnd"
+          @pointercancel="hue.onEnd"
+          @lostpointercapture="hue.onEnd"
         >
           <div
             class="absolute top-1/2 w-4 h-4 rounded-full border-2 border-solid border-white shadow-[0_1px_3px_rgba(0,0,0,0.5)] pointer-events-none"
@@ -254,6 +268,9 @@ const isSwatchActive = (swatch: string): boolean => {
           :style="checkerStyle"
           @pointerdown="alpha.onDown"
           @pointermove="alpha.onMove"
+          @pointerup="alpha.onEnd"
+          @pointercancel="alpha.onEnd"
+          @lostpointercapture="alpha.onEnd"
         >
           <div
             class="absolute inset-0 rounded-full"

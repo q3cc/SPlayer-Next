@@ -108,6 +108,7 @@ export const mobileLyricPip = {
     const result = await invoke<{ image: string }>("plugin:lyric-pip|preview", {
       content: pipContent(value, store.get("desktopLyric")),
       position: value.position,
+      playing: value.playing,
     });
     return result.image;
   },

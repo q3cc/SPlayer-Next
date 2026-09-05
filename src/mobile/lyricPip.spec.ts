@@ -85,7 +85,7 @@ describe("歌词画中画", () => {
     expect(await pip.preview()).toBe("data:image/png;base64,test");
     expect(mocks.invoke).toHaveBeenCalledWith(
       "plugin:lyric-pip|preview",
-      expect.objectContaining({ position: 1500 }),
+      expect.objectContaining({ position: 1500, playing: true }),
     );
     await pip.releasePreview();
     expect(mocks.invoke).toHaveBeenLastCalledWith("plugin:lyric-pip|discard");

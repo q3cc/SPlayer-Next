@@ -45,6 +45,7 @@ private struct LyricStyle: Decodable, Equatable {
 private struct PreviewRequest: Decodable {
   let content: LyricContent
   let position: Double
+  let playing: Bool
 }
 
 /// 显示层作为视图主图层，随窗口尺寸变化同步布局。
@@ -146,12 +147,22 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let request = try invoke.parseArgs(PreviewRequest.self)
     DispatchQueue.main.async {
       self.applyContent(request.content)
+      let now = ProcessInfo.processInfo.systemUptime
+      if self.controller == nil {
+        if self.playing {
+          self.discAngle = (self.discAngle + (now - self.discAnchorTime) * .pi / 10)
+            .truncatingRemainder(dividingBy: 2 * .pi)
+        }
+        self.discAnchorTime = now
+        self.playing = request.playing
+      }
+      let angle = self.discAngle + (self.playing ? (now - self.discAnchorTime) * .pi / 10 : 0)
       let time = request.position + request.content.offset
       let row = request.content.lines.last(where: { $0.start <= time })
       let active = row.flatMap { time < $0.end + 3000 ? $0 : nil }
       let title = request.content.title.isEmpty ? "SPlayer Next" : request.content.title
       guard let buffer = self.drawFrame(active?.rows ?? [title, request.content.artist],
-        primary: active?.primary ?? 0, angle: CGFloat(request.position / 20000 * 2 * .pi),
+        primary: active?.primary ?? 0, angle: CGFloat(angle),
         words: active?.words ?? [], time: time) else {
         invoke.reject("预览绘制失败")
         return
@@ -288,7 +299,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
   }
 
-  /// 有封面且播放时以十帧旋转；暂停或无封面时恢复换句与一秒保活调度。
+  /// 封面旋转使用二十帧；暂停、隐藏或无封面时保留低频调度。
   private func updateTimer() {
     timer?.invalidate()
     timer = nil
@@ -298,7 +309,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let now = ProcessInfo.processInfo.systemUptime
     var delay = max(0.2, 1 - (now - lastFrameTime))
     if playing && coverImage != nil {
-      delay = max(0.02, 0.1 - (now - lastFrameTime))
+      delay = max(0.005, 0.05 - (now - lastFrameTime))
     }
     if playing && speed > 0, let content = content {
       let time = currentPosition() + content.offset
@@ -312,11 +323,13 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
         }
       }
     }
-    timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+    let nextTimer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
       self?.render()
       self?.updateTimer()
     }
-    timer?.tolerance = 0.01
+    nextTimer.tolerance = 0.002
+    timer = nextTimer
+    RunLoop.main.add(nextTimer, forMode: .common)
   }
 
   private func currentPosition() -> Double {
@@ -344,7 +357,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let text = active?.rows ?? [title, info]
     let primary = active?.primary ?? 0
     let words = active?.words ?? []
-    let animateDisc = playing && coverImage != nil && now - lastFrameTime >= 0.095
+    let animateDisc = playing && coverImage != nil && now - lastFrameTime >= 0.045
     let animateWords = !words.isEmpty && time != lastLyricTime &&
       (!playing || force || now - lastFrameTime >= 0.095)
     if text != lastText || primary != lastPrimary || cachedFrame == nil || animateDisc || animateWords {
@@ -427,12 +440,14 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     context.setFillColor(UIColor(white: 0.04, alpha: 1).cgColor)
     context.fillEllipse(in: disc)
     context.saveGState()
-    context.translateBy(x: disc.midX, y: disc.midY)
-    context.rotate(by: angle)
-    context.translateBy(x: -disc.midX, y: -disc.midY)
+    // 固定裁切边缘，只旋转内部图像，避免圆周栅格化随角度抖动。
     let coverRect = disc.insetBy(dx: 16, dy: 16)
     context.addEllipse(in: coverRect)
     context.clip()
+    context.interpolationQuality = .high
+    context.translateBy(x: disc.midX, y: disc.midY)
+    context.rotate(by: angle)
+    context.translateBy(x: -disc.midX, y: -disc.midY)
     if let image = coverImage {
       let scale = max(coverRect.width / image.size.width, coverRect.height / image.size.height)
       let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)

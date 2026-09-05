@@ -34,7 +34,7 @@ const refresh = async (): Promise<void> => {
     failed.value = true;
   } finally {
     busy = false;
-    if (!disposed && visible.value && page.value === "visible") timer = setTimeout(refresh, 500);
+    if (!disposed && visible.value && page.value === "visible") timer = setTimeout(refresh, 100);
     else release();
   }
 };
