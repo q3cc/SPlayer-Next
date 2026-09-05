@@ -1,5 +1,6 @@
 import AVFoundation
 import AVKit
+import Darwin
 import Tauri
 import UIKit
 
@@ -216,9 +217,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     lastFrameTime = now
     frameCount += 1
     if frameCount == 1 || frameCount % 30 == 0 {
-      NSLog("[lyric-pip] frames=%d status=%ld ready=%d surface=%d bytes=%ld", frameCount,
-        displayLayer.status.rawValue, displayLayer.isReadyForDisplay ? 1 : 0,
-        CVPixelBufferGetIOSurface(buffer) != nil ? 1 : 0, CVPixelBufferGetDataSize(buffer))
+      log("frames=\(frameCount) status=\(displayLayer.status.rawValue) ready=\(displayLayer.isReadyForDisplay) surface=\(CVPixelBufferGetIOSurface(buffer) != nil) bytes=\(CVPixelBufferGetDataSize(buffer))")
     }
   }
 
@@ -278,7 +277,12 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private func reportRenderError(_ message: String) {
     guard lastRenderError != message else { return }
     lastRenderError = message
-    NSLog("[lyric-pip] render-error: %@", message)
+    log("render-error: \(message)")
+  }
+
+  /// 应用已将 stderr 重定向到共享日志，直接写入以免只落到系统统一日志。
+  private func log(_ message: String) {
+    fputs("[lyric-pip] \(message)\n", stderr)
   }
 
   private func cleanup() {
@@ -298,12 +302,12 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     cachedFrame = nil
     lastFrameTime = -.infinity
     lastRenderError = nil
-    NSLog("[lyric-pip] stopped frames=%d", frameCount)
+    log("stopped frames=\(frameCount)")
     trigger("visibility", data: ["active": false])
   }
 
   private func fail(_ message: String) {
-    NSLog("[lyric-pip] %@", message)
+    log(message)
     pendingStart?.reject(message)
     pendingStart = nil
     cleanup()
@@ -315,7 +319,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     pendingStart?.resolve()
     pendingStart = nil
     trigger("visibility", data: ["active": true])
-    NSLog("[lyric-pip] started ready=%d", displayLayer.isReadyForDisplay ? 1 : 0)
+    log("started ready=\(displayLayer.isReadyForDisplay)")
     render(force: true)
     updateTimer()
   }
@@ -348,7 +352,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
 
   func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
     didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
-    NSLog("[lyric-pip] render-size=%dx%d", newRenderSize.width, newRenderSize.height)
+    log("render-size=\(newRenderSize.width)x\(newRenderSize.height)")
     render(force: true)
   }
 
