@@ -282,7 +282,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     didTransitionToRenderSize newRenderSize: CMVideoDimensions) {}
 
   func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
-    skipByInterval skipInterval: CMTime, completionHandler: @escaping () -> Void) {
+    skipByInterval skipInterval: CMTime, completion completionHandler: @escaping () -> Void) {
     completionHandler()
   }
 }
