@@ -157,13 +157,16 @@ export const runMobileSmokeTest = async (): Promise<void> => {
     reportBootStage("library-scan-ready");
 
     // 覆盖游客会话初始化、搜索、播放地址与 WKWebView 音频解码，不能仅检查首页公开接口。
-    const search = await searchSongs("netease", "义勇军进行曲", 0, 5);
+    const search = await searchSongs("netease", "纯音乐", 0, 5);
     requireItems("search songs", search.items);
     reportBootStage("search-ready");
     let played = false;
     for (const track of search.items) {
       const source = await resolveNeteaseUrl(track, "lq");
-      if (!source.available) continue;
+      if (!source.available) {
+        reportBootStage(`playback-unavailable:${track.id}:${source.errorCode}`);
+        continue;
+      }
       const loaded = await window.api.player.load(source.url, { meta: track, autoPlay: true });
       if (!loaded.success) throw new Error(`playback load: ${loaded.error}`);
       for (let attempt = 0; attempt < 10; attempt += 1) {
