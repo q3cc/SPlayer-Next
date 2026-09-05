@@ -4,76 +4,88 @@
 
 <h1>SPlayer Next · iOS / iPadOS</h1>
 
-<p>让 SPlayer Next 在 iPhone 和 iPad 上运行。</p>
+让 SPlayer Next 在 iPhone 和 iPad 上运行。
 
-[下载 IPA](https://github.com/q3cc/SPlayer-Next/releases) · [构建记录](https://github.com/q3cc/SPlayer-Next/actions/workflows/ios-unsigned.yml) · [反馈问题](https://github.com/q3cc/SPlayer-Next/issues) · [原项目](https://github.com/SPlayer-Dev/SPlayer-Next)
+[下载 IPA](https://github.com/q3cc/SPlayer-Next-ios/releases/latest) · [反馈问题](https://github.com/q3cc/SPlayer-Next-ios/issues) · [原项目](https://github.com/SPlayer-Dev/SPlayer-Next)
 
 </div>
 
-## 这个仓库做什么
+这是 [SPlayer-Dev/SPlayer-Next](https://github.com/SPlayer-Dev/SPlayer-Next) 的 iOS / iPadOS 适配版，由 q3cc 维护。使用 Tauri 打包，复用上游的 Vue 界面、音乐平台接口和歌词逻辑，不是上游官方发行版。桌面版请到原项目下载。
 
-这是 [SPlayer-Dev/SPlayer-Next](https://github.com/SPlayer-Dev/SPlayer-Next) 的 iOS / iPadOS 适配分支，由 q3cc 维护。原播放器、界面和大部分业务代码来自上游；这个仓库主要处理移动端运行、系统接口和屏幕适配。
+## 快速开始
 
-客户端使用 Tauri 打包，复用原项目的 Vue 界面、音乐平台接口和歌词逻辑。iOS 播放使用系统 WebView 的音频能力，格式兼容性与桌面版的 FFmpeg 音频引擎不同。
+需要 iOS / iPadOS 16 或更高版本，以及自己的签名工具和证书。
 
-目前提供预览版，适合愿意自行签名安装、协助实机测试的用户。Windows、macOS、Linux 桌面版请前往[原项目](https://github.com/SPlayer-Dev/SPlayer-Next)。
+1. 从 [Releases](https://github.com/q3cc/SPlayer-Next-ios/releases/latest) 下载未签名 IPA，签名后安装。
+2. 首次打开完成引导，登录网易云账号，或在曲库中添加音乐文件夹。
+3. 播放歌曲后，可在“设置 → 桌面歌词”开启歌词小窗。
 
-## 下载与安装
+开发中的安装包在 [Actions](https://github.com/q3cc/SPlayer-Next-ios/actions/workflows/ios-unsigned.yml) 的成功构建页面底部，下载 Artifacts 并解压即可得到 IPA。
 
-要求 iOS / iPadOS 16 或更高版本。
+## 特性
 
-1. 在 [Releases](https://github.com/q3cc/SPlayer-Next/releases) 下载未签名的 `.ipa`。
-2. 使用自己的签名工具和证书签名后安装。未签名 IPA 不能直接在“文件”App 中点开安装。
-3. 首次打开完成引导，再登录音乐账号或导入本地音乐。
+- 📱 iPhone 紧凑布局，iPad 宽横屏复用桌面布局；适配安全区、窗口缩放和前台调度的顶部按钮区域。
+- 🎵 网易云扫码登录、歌单和推荐，登录状态可保留。
+- 📂 调用系统文件夹选择器，把音乐复制到应用曲库，不修改原目录。
+- 🎧 后台播放、锁屏和控制中心操作，封面优先使用来源提供的原图。
+- 💬 桌面歌词小窗支持单 / 双行、逐字高亮、音译和翻译；可调字号、颜色，并实时预览。唱片随播放旋转。
+- 📝 系统动态歌词可把当前歌词显示为媒体卡片标题，歌曲名和歌手显示为副标题；歌词结束后保留 3 秒，无新句时恢复歌曲信息。默认关闭。
+- 🛠️ 可选诊断日志，默认关闭，文件可在系统“文件”App 中分享。
 
-开发中的新包也会上传到 [GitHub Actions](https://github.com/q3cc/SPlayer-Next/actions/workflows/ios-unsigned.yml)。打开成功的构建，在 Artifacts 中下载 `SPlayer-Next-iOS-unsigned-<commit>`，解压后可得到 IPA。
+## 常见问题
 
-## iOS 适配内容
+### IPA 为什么不能直接安装？
 
-- 网易云扫码登录、账号资料、歌单与推荐。已有实机日志确认扫码授权成功，重启后登录状态保留；此前偶发失败的原因仍未完全确定。
-- iPhone / iPad 界面、安全区与横竖屏布局。iPad 宽横屏复用桌面布局，窄窗口使用紧凑布局；前台调度窗口和顶部系统按钮区域也做了适配。
-- 系统文件夹选择器。选择音乐文件夹后，复制到应用的 `Documents/Imported Music` 再导入曲库，不修改原文件夹，也不会自动同步原目录后续的变化。
-- 后台音频和锁屏、控制中心播放信息。播放器大封面和系统封面优先使用来源提供的原图，网易云不再限制为 600×600；系统封面加载失败时保留缩略图。
-- 歌词小窗：通过播放器的歌词按钮或设置里的“开启歌词小窗”启动系统画中画，显示当前歌词、翻译和歌曲信息。窗口可拖动、缩放，关闭不停止音乐；后台同步尚待实机验证。
-- 系统动态歌词。在设置中打开“系统媒体控制”和“动态歌词”，系统卡片标题显示当前歌词，副标题显示“歌曲名 - 歌手”。一句歌词结束后保留 3 秒，没有新歌词才恢复歌曲信息。动态歌词默认关闭。
-- 运行日志。在“文件”App →“我的 iPhone / iPad”→“SPlayer Next”→“logs”查看或分享，以启动时间命名。
+提供的是未签名 IPA，需要自行签名。不能在“文件”App 中点一下直接安装，也没有 App Store 下载入口。
 
-这些功能已加入代码，但还没有覆盖所有机型、系统版本和音乐格式的实机验证。桌面歌词窗口、Windows 任务栏集成、插件和流媒体服务等上游功能，不代表在 iOS 上全部可用。
+### 为什么安装包比桌面版小？
 
-## 遇到问题
+iOS 使用系统 WebView 播放音频，不包含桌面版的 Electron 和 FFmpeg 音频引擎。因此体积和音频格式兼容性都与桌面版不同。
 
-在[本仓库 Issues](https://github.com/q3cc/SPlayer-Next/issues)提供设备型号、系统版本、安装包对应的提交或发行版，以及复现步骤。界面问题附截图；登录和播放问题附本次启动的日志。
+### 导入文件夹后，原来的音乐会被移动吗？
 
-当前版本临时开启详细日志，记录运行错误和登录各阶段状态。Cookie、令牌等凭据会脱敏，不记录请求体；分享前仍请检查是否含有不想公开的信息。历史日志不会自动删除，可以在“文件”App 中清理。导入的音乐也在共享目录中，注意不要误删。
+不会。音乐会复制到应用的 `Documents/Imported Music`，原目录不变；原目录后续增删不会自动同步。
 
-当前 Action 暂时跳过模拟器冒烟测试，构建成功不等于所有功能已通过实机测试。具体构建与诊断说明见 [iOS 构建文档](docs/ios-unsigned.md)。
+### 桌面歌词在哪里？关闭小窗会暂停吗？
+
+在“设置 → 桌面歌词”开启，也可从播放器的歌词入口打开。小窗可拖动、缩放，关闭不影响音乐播放。有音译或翻译时，显示当前句和附加歌词。
+
+### 登录或播放异常，怎么提供日志？
+
+在“设置 → 通用 → 调试”打开“日志记录”，再复现问题。开关立即生效；之后启动应用时会按已保存的开关状态记录，不能补回开启前的日志。
+
+到“文件”App →“我的 iPhone / iPad”→“SPlayer Next”→“logs”分享对应文件，文件名是本次启动时间。关闭开关后停止写入，已有文件不会删除，可手动清理。不要误删旁边的 `Imported Music`。
+
+前端日志会隐藏 Cookie、令牌等凭据，不记录请求体；分享前仍请检查个人信息。反馈时附设备型号、系统版本、安装包版本和复现步骤，界面问题请加截图。
+
+### 正式版是否代表所有上游功能都支持？
+
+不代表。上游的 Windows 任务栏、桌面插件等功能不等于在 iOS 可用。网易云登录曾有偶发失败，虽已有实机成功登录和保留登录态的记录，仍未覆盖所有设备和网络环境。
+
+当前 Actions 跳过模拟器冒烟测试；编译和自动测试通过不代表全部功能已通过实机验证。
 
 ## 自行构建
 
-GitHub Actions 可直接生成未签名 IPA。本地构建需要 macOS、Xcode、Rust iOS target、Node.js 22.19.0 或更高版本，以及项目指定的 pnpm。
+本地构建需要 macOS、Xcode、Rust iOS target、Node.js 22.19.0 或更高版本，以及项目指定的 pnpm。
 
 ```bash
-git clone https://github.com/q3cc/SPlayer-Next.git
-cd SPlayer-Next
+git clone https://github.com/q3cc/SPlayer-Next-ios.git
+cd SPlayer-Next-ios
 git switch main
 pnpm install --frozen-lockfile
 pnpm ios:init
 pnpm ios:build --ci --no-sign
 ```
 
-只检查移动端前端时可运行 `pnpm mobile:build`；实机开发使用 `pnpm ios:dev`。本分支包含官方 Tauri 插件的小范围补丁，安装依赖时请保留 `pnpm-workspace.yaml`、`pnpm-lock.yaml` 和 `patches/`。
+前端检查使用 `pnpm mobile:build`，实机开发使用 `pnpm ios:dev`。本分支含 Tauri 插件补丁，请保留 `pnpm-workspace.yaml`、`pnpm-lock.yaml` 和 `patches/`。详见 [iOS 构建文档](docs/ios-unsigned.md)。
 
 ## 来源与许可
 
-原项目由 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及其贡献者开发，是 [SPlayer](https://github.com/SPlayer-Dev/SPlayer) 的继任版本。本仓库保留原作者署名和版权信息，iOS 适配不代表上游官方发布。
+原播放器由 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及其贡献者开发，是 [SPlayer](https://github.com/SPlayer-Dev/SPlayer) 的继任版本。本仓库保留原作者署名和版权信息。
 
-使用的开源项目包括：
+使用的开源项目包括 [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)、[NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)、[Tauri](https://github.com/tauri-apps/tauri) 及其[官方插件](https://github.com/tauri-apps/plugins-workspace)。
 
-- [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)：歌词显示组件。
-- [NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)：网易云音乐 API。
-- [Tauri](https://github.com/tauri-apps/tauri) 及其[官方插件](https://github.com/tauri-apps/plugins-workspace)：移动端打包与系统接口。
-
-项目沿用上游的 AGPL-3.0 许可，详见 [LICENSE](LICENSE)。分发修改版时应保留原作者及版权声明，并遵守许可中的源码提供要求。原项目的使用声明见[上游 README](https://github.com/SPlayer-Dev/SPlayer-Next/blob/dev/README.zh-CN.md)。
+项目沿用上游的 AGPL-3.0，详见 [LICENSE](LICENSE)。分发修改版时应保留原作者及版权声明，并遵守许可中的源码提供要求。原项目的使用声明见[上游 README](https://github.com/SPlayer-Dev/SPlayer-Next/blob/dev/README.zh-CN.md)。
 
 ## 免责声明
 

@@ -11,6 +11,7 @@ import type { NowPlayingSnapshot, NowPlayingUpdatePayload } from "@shared/types/
 import type { PlayerApi, PlayerEvent, Track } from "@shared/types/player";
 import type { StreamingApi } from "@shared/types/streaming";
 import { store } from "./shims/store";
+import { setDiagnosticsEnabled } from "./diagnostics";
 import { testNetworkProxy } from "./shims/proxy";
 import { mobileLibrary } from "./library";
 import { mobileComments } from "./comments";
@@ -241,18 +242,21 @@ const api = {
   config: {
     get: async (key: string) => store.get(key as never),
     set: async (key: string, value: unknown) => {
+      if (key === "system.diagnosticLogging") await setDiagnosticsEnabled(value === true);
       store.set(key, value);
       if (key.startsWith("media.")) mobileMediaSession.refresh();
       if (key === "desktopLyric" || key.startsWith("desktopLyric.")) await mobileLyricPip.update();
     },
     getAll: async () => store.store,
     reset: async () => {
+      await setDiagnosticsEnabled(false);
       store.clear();
       mobileMediaSession.refresh();
       await mobileLyricPip.update();
     },
     replaceAll: async (value: unknown) => {
       store.replaceAll(value);
+      await setDiagnosticsEnabled(store.get("system.diagnosticLogging") === true);
       mobileMediaSession.refresh();
       await mobileLyricPip.update();
     },

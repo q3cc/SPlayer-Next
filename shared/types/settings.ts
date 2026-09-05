@@ -465,6 +465,8 @@ export interface SystemConfig {
   update: AppUpdateSettings;
   /** 系统配置 */
   system: {
+    /** 移动端诊断日志，默认关闭 */
+    diagnosticLogging: boolean;
     /** 记忆窗口状态 */
     rememberWindowState: boolean;
     /** 开启无边框主窗口 */

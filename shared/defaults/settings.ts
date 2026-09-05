@@ -151,6 +151,7 @@ export const defaultSystemConfig: SystemConfig = {
     channel: "stable",
   },
   system: {
+    diagnosticLogging: false,
     rememberWindowState: true,
     borderlessWindow: true,
     taskbarProgress: true,

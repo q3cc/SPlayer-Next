@@ -59,6 +59,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             report_boot_stage,
             diagnostics::append_diagnostic_log,
+            diagnostics::set_diagnostic_logging,
             diagnostics::diagnostic_log_path
         ])
         .run(tauri::generate_context!())

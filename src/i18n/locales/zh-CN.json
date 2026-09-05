@@ -704,6 +704,10 @@
     "nestedHint": "该目录与已添加目录嵌套，已自动跳过"
   },
   "settings": {
+    "diagnosticLogging": {
+      "label": "日志记录",
+      "description": "排查问题时开启，立即生效。日志保存在“文件”App 的 SPlayer Next/logs；关闭后停止记录，已有文件保留。"
+    },
     "title": "设置",
     "subtitle": "调整您的专属配置",
     "search": "搜索设置项...",

@@ -716,6 +716,10 @@
     "nestedHint": "Folder is nested with an existing one; skipped"
   },
   "settings": {
+    "diagnosticLogging": {
+      "label": "Diagnostic logging",
+      "description": "Enable when troubleshooting. Takes effect immediately. Logs are in Files → SPlayer Next/logs. Disabling stops recording and keeps existing files."
+    },
     "title": "Settings",
     "subtitle": "Tailor your experience",
     "search": "Search settings...",
