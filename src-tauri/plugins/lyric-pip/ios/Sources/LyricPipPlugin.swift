@@ -42,6 +42,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var speed = 1.0
   private var anchorTime = ProcessInfo.processInfo.systemUptime
   private var lastText: [String]?
+  private var cachedFrame: CVPixelBuffer?
+  private var lastFrameTime = -Double.infinity
+  private var frameCount = 0
+  private var lastRenderError: String?
 
   @objc public func status(_ invoke: Invoke) {
     invoke.resolve(["active": controller?.isPictureInPictureActive ?? false])
@@ -106,7 +110,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       pip.canStartPictureInPictureAutomaticallyFromInline = false
       self.controller = pip
       self.lastText = nil
+      self.frameCount = 0
+      self.lastFrameTime = -.infinity
       self.render()
+      self.updateTimer()
       self.readiness = pip.observe(\.isPictureInPicturePossible, options: [.initial, .new]) {
         [weak self] pip, _ in
         DispatchQueue.main.async {
@@ -138,11 +145,14 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
   }
 
-  /// 只在可见且播放时推进歌词，后台不依赖 WebView 的定时器。
+  /// 仅窗口启动中或可见时送帧；复用定时器，避免进度推送不断重置首帧重试。
   private func updateTimer() {
-    timer?.invalidate()
-    timer = nil
-    guard controller?.isPictureInPictureActive == true, playing else { return }
+    guard controller?.isPictureInPictureActive == true || pendingStart != nil else {
+      timer?.invalidate()
+      timer = nil
+      return
+    }
+    guard timer == nil else { return }
     timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
       self?.render()
     }
@@ -155,30 +165,92 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     return duration > 0 ? min(duration, value) : value
   }
 
-  /// 仅为内容变化生成一帧，不创建视频编码器或累计历史图片。
-  private func render() {
+  /// 内容未变化时复用当前像素缓冲，以低频新时间戳重送，供画中画切换和暂停后恢复显示。
+  private func render(force: Bool = false) {
     guard sourceView != nil else { return }
+    let now = ProcessInfo.processInfo.systemUptime
+    let needsFlush = displayLayer.status == .failed || displayLayer.requiresFlushToResumeDecoding
+    if needsFlush {
+      reportRenderError("display-layer: \(displayLayer.error?.localizedDescription ?? "requires flush")")
+      displayLayer.flush()
+    }
+    guard displayLayer.isReadyForMoreMediaData else { return }
     let time = currentPosition() + (content?.offset ?? 0)
     let line = content?.lines.last(where: { $0.start <= time })
     let active = line.flatMap { time < $0.end + 3000 ? $0 : nil }
     let title = content?.title.isEmpty == false ? content!.title : "SPlayer Next"
     let info = [title, content?.artist ?? ""].filter { !$0.isEmpty }.joined(separator: " - ")
     let text = [active?.text ?? title, active?.translation ?? "", info]
-    guard text != lastText || displayLayer.status == .failed else { return }
-    if displayLayer.status == .failed { displayLayer.flush() }
+    if text != lastText || cachedFrame == nil {
+      guard let buffer = drawFrame(text) else { return }
+      cachedFrame = buffer
+      lastText = text
+    } else if !force && !needsFlush && now - lastFrameTime < 1 {
+      return
+    }
+    guard let buffer = cachedFrame else { return }
+    var format: CMVideoFormatDescription?
+    let formatResult = CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
+      imageBuffer: buffer, formatDescriptionOut: &format)
+    guard formatResult == noErr, let format = format else {
+      reportRenderError("video-format: \(formatResult)")
+      return
+    }
+    // displayLayer 未设置 controlTimebase，PTS 必须使用 host clock，不能始终为零。
+    var timing = CMSampleTimingInfo(duration: CMTime(seconds: 2, preferredTimescale: 600),
+      presentationTimeStamp: CMClockGetTime(CMClockGetHostTimeClock()), decodeTimeStamp: .invalid)
+    var sample: CMSampleBuffer?
+    let sampleResult = CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault,
+      imageBuffer: buffer, formatDescription: format, sampleTiming: &timing, sampleBufferOut: &sample)
+    guard sampleResult == noErr, let sample = sample else {
+      reportRenderError("sample-buffer: \(sampleResult)")
+      return
+    }
+    if let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true) {
+      let dictionary = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
+      CFDictionarySetValue(dictionary,
+        Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
+        Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
+    }
+    displayLayer.enqueue(sample)
+    lastFrameTime = now
+    frameCount += 1
+    if frameCount == 1 || frameCount % 30 == 0 {
+      NSLog("[lyric-pip] frames=%d status=%ld ready=%d surface=%d bytes=%ld", frameCount,
+        displayLayer.status.rawValue, displayLayer.isReadyForDisplay ? 1 : 0,
+        CVPixelBufferGetIOSurface(buffer) != nil ? 1 : 0, CVPixelBufferGetDataSize(buffer))
+    }
+  }
 
+  /// 使用可共享的 IOSurface，并在送往系统显示层之前结束 CPU 写入锁。
+  private func drawFrame(_ text: [String]) -> CVPixelBuffer? {
     var pixelBuffer: CVPixelBuffer?
-    let attributes = [kCVPixelBufferCGImageCompatibilityKey: true,
-                      kCVPixelBufferCGBitmapContextCompatibilityKey: true] as CFDictionary
-    guard CVPixelBufferCreate(kCFAllocatorDefault, 640, 360, kCVPixelFormatType_32BGRA,
-      attributes, &pixelBuffer) == kCVReturnSuccess, let buffer = pixelBuffer else { return }
-    CVPixelBufferLockBaseAddress(buffer, [])
+    let attributes: [CFString: Any] = [
+      kCVPixelBufferCGImageCompatibilityKey: true,
+      kCVPixelBufferCGBitmapContextCompatibilityKey: true,
+      kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any],
+      kCVPixelBufferMetalCompatibilityKey: true
+    ]
+    let result = CVPixelBufferCreate(kCFAllocatorDefault, 640, 360, kCVPixelFormatType_32BGRA,
+      attributes as CFDictionary, &pixelBuffer)
+    guard result == kCVReturnSuccess, let buffer = pixelBuffer else {
+      reportRenderError("pixel-buffer: \(result)")
+      return nil
+    }
+    let lockResult = CVPixelBufferLockBaseAddress(buffer, [])
+    guard lockResult == kCVReturnSuccess else {
+      reportRenderError("pixel-buffer-lock: \(lockResult)")
+      return nil
+    }
     defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
     guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: 640,
       height: 360, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
       space: CGColorSpaceCreateDeviceRGB(),
       bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
-    else { return }
+    else {
+      reportRenderError("bitmap-context: creation failed")
+      return nil
+    }
     context.setFillColor(UIColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1).cgColor)
     context.fill(CGRect(x: 0, y: 0, width: 640, height: 360))
     context.translateBy(x: 0, y: 360)
@@ -199,24 +271,14 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       ])
     }
     UIGraphicsPopContext()
-    var format: CMVideoFormatDescription?
-    guard CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault,
-      imageBuffer: buffer, formatDescriptionOut: &format) == noErr, let format = format else { return }
-    var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: .zero,
-                                    decodeTimeStamp: .invalid)
-    var sample: CMSampleBuffer?
-    guard CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault,
-      imageBuffer: buffer, formatDescription: format, sampleTiming: &timing,
-      sampleBufferOut: &sample) == noErr, let sample = sample else { return }
-    if let attachments = CMSampleBufferGetSampleAttachmentsArray(sample, createIfNecessary: true) {
-      let dictionary = unsafeBitCast(CFArrayGetValueAtIndex(attachments, 0), to: CFMutableDictionary.self)
-      CFDictionarySetValue(dictionary,
-        Unmanaged.passUnretained(kCMSampleAttachmentKey_DisplayImmediately).toOpaque(),
-        Unmanaged.passUnretained(kCFBooleanTrue).toOpaque())
-    }
-    guard displayLayer.isReadyForMoreMediaData else { return }
-    displayLayer.enqueue(sample)
-    lastText = text
+    context.flush()
+    return buffer
+  }
+
+  private func reportRenderError(_ message: String) {
+    guard lastRenderError != message else { return }
+    lastRenderError = message
+    NSLog("[lyric-pip] render-error: %@", message)
   }
 
   private func cleanup() {
@@ -233,6 +295,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     sourceView = nil
     content = nil
     lastText = nil
+    cachedFrame = nil
+    lastFrameTime = -.infinity
+    lastRenderError = nil
+    NSLog("[lyric-pip] stopped frames=%d", frameCount)
     trigger("visibility", data: ["active": false])
   }
 
@@ -249,6 +315,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     pendingStart?.resolve()
     pendingStart = nil
     trigger("visibility", data: ["active": true])
+    NSLog("[lyric-pip] started ready=%d", displayLayer.isReadyForDisplay ? 1 : 0)
+    render(force: true)
     updateTimer()
   }
 
@@ -279,7 +347,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
-    didTransitionToRenderSize newRenderSize: CMVideoDimensions) {}
+    didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
+    NSLog("[lyric-pip] render-size=%dx%d", newRenderSize.width, newRenderSize.height)
+    render(force: true)
+  }
 
   func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController,
     skipByInterval skipInterval: CMTime, completion completionHandler: @escaping () -> Void) {
