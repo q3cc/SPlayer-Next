@@ -14,6 +14,10 @@
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
     {
+      "identifier": "fs:scope",
+      "allow": ["$DOCUMENT/Imported Music", "$DOCUMENT/Imported Music/**"]
+    },
+    {
       "identifier": "http:default",
       "allow": ["http://**", "https://**"]
     },

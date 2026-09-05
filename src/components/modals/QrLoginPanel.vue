@@ -12,6 +12,7 @@ const state = ref<QrLoginState>("waiting");
 const nickname = ref("");
 const avatarUrl = ref("");
 const refreshing = ref(false);
+let checking = false;
 
 const tip = computed(() => {
   if (state.value === "expired") return t("login.qrTipExpired");
@@ -24,6 +25,7 @@ const refresh = async (): Promise<void> => {
   if (refreshing.value) return;
   refreshing.value = true;
   pause();
+  key.value = "";
   if (state.value !== "expired") qrUrl.value = "";
   nickname.value = "";
   avatarUrl.value = "";
@@ -50,19 +52,29 @@ const refresh = async (): Promise<void> => {
 };
 
 const poll = async (): Promise<void> => {
-  if (!key.value) return;
-  const result = await props.adapter.check(key.value);
-  state.value = result.state;
-  nickname.value = result.nickname ?? nickname.value;
-  avatarUrl.value = result.avatarUrl ?? avatarUrl.value;
-  if (result.state === "expired") {
-    pause();
-    await refresh();
-    return;
-  }
-  if (result.state === "success") {
-    pause();
-    emit("success");
+  if (!key.value || checking) return;
+  const checkedKey = key.value;
+  checking = true;
+  try {
+    const result = await props.adapter.check(checkedKey);
+    if (!props.active || key.value !== checkedKey) return;
+    state.value = result.state;
+    nickname.value = result.nickname ?? nickname.value;
+    avatarUrl.value = result.avatarUrl ?? avatarUrl.value;
+    if (result.state === "expired") {
+      pause();
+      await refresh();
+      return;
+    }
+    if (result.state === "success") {
+      pause();
+      key.value = "";
+      emit("success");
+    }
+  } catch {
+    // 暂时断网时保留当前二维码，由下一次轮询继续确认。
+  } finally {
+    checking = false;
   }
 };
 

@@ -201,11 +201,8 @@ const showComments = (): void => {
     >
       <div
         v-show="isPlayerExpanded"
-        class="fixed inset-0 z-200 overflow-hidden text-cover"
-        :class="[
-          immersive ? 'cursor-none [&_*]:!cursor-none' : '',
-          isIOS && !useMobileLayout ? 'ios-wide-player' : '',
-        ]"
+        class="full-player fixed inset-0 z-200 overflow-hidden text-cover"
+        :class="immersive ? 'cursor-none [&_*]:!cursor-none' : ''"
         style="--lp-color: rgb(var(--s-cover))"
         @mouseenter="onPlayerMouseEnter"
         @mouseleave="onPlayerMouseLeave"
@@ -237,7 +234,7 @@ const showComments = (): void => {
           class="absolute top-0 inset-x-0 h-14 z-10 app-drag-region transition-opacity duration-400 flex items-center justify-between px-3"
           :class="[
             immersive ? 'opacity-0 pointer-events-none' : 'opacity-100',
-            useMobileLayout ? 'mobile-full-player-header' : '',
+            useMobileLayout || isIOS ? 'safe-full-player-header' : '',
           ]"
           @mouseenter="onBarEnter"
           @mouseleave="onBarLeave"
@@ -278,7 +275,10 @@ const showComments = (): void => {
         <!-- 主区域 -->
         <div
           class="absolute top-14 inset-x-0"
-          :class="[useMobileLayout ? 'bottom-34 mobile-full-player-main' : 'bottom-20']"
+          :class="[
+            useMobileLayout ? 'bottom-34 mobile-full-player-main' : 'bottom-20',
+            isIOS && !useMobileLayout ? 'safe-wide-player-main' : '',
+          ]"
           @mousemove="onMainMove"
         >
           <!-- 左侧 -->
@@ -453,7 +453,10 @@ const showComments = (): void => {
         <div
           v-if="!useMobileLayout"
           class="absolute bottom-0 inset-x-0 h-20 z-10 flex items-center gap-4 px-4 transition-opacity duration-400"
-          :class="immersive ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+          :class="[
+            immersive ? 'opacity-0 pointer-events-none' : 'opacity-100',
+            isIOS ? 'safe-wide-player-controls' : '',
+          ]"
           @mouseenter="onBarEnter"
           @mouseleave="onBarLeave"
         >
@@ -677,12 +680,12 @@ const showComments = (): void => {
 
 <style scoped>
 .mobile-full-player-controls {
-  padding-right: var(--s-safe-right);
+  padding-right: calc(1.25rem + var(--s-safe-right));
   padding-bottom: calc(0.75rem + var(--s-safe-bottom));
-  padding-left: var(--s-safe-left);
+  padding-left: calc(1.25rem + var(--s-safe-left));
 }
 
-.mobile-full-player-header {
+.safe-full-player-header {
   height: calc(3.5rem + var(--s-safe-top));
   padding-top: var(--s-safe-top);
   padding-right: calc(0.75rem + var(--s-safe-right));
@@ -691,10 +694,17 @@ const showComments = (): void => {
 
 .mobile-full-player-main {
   top: calc(3.5rem + var(--s-safe-top));
+  bottom: calc(8.5rem + var(--s-safe-bottom));
 }
 
-.ios-wide-player {
-  top: var(--s-safe-top);
+.safe-wide-player-main {
+  top: calc(3.5rem + var(--s-safe-top));
+  right: var(--s-safe-right);
+  bottom: calc(5rem + var(--s-safe-bottom));
+  left: var(--s-safe-left);
+}
+
+.safe-wide-player-controls {
   right: var(--s-safe-right);
   bottom: var(--s-safe-bottom);
   left: var(--s-safe-left);

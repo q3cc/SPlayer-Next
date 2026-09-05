@@ -112,7 +112,10 @@ const isWithin = (path: string, directory: string): boolean => {
 };
 
 export const resolveMobileAudioSource = (source: string): string => {
-  if (/^(https?|blob|data|asset|file):/i.test(source)) return source;
+  if (source.startsWith("file:")) {
+    return convertFileSrc(decodeURIComponent(new URL(source).pathname));
+  }
+  if (/^(https?|blob|data|asset):/i.test(source)) return source;
   return convertFileSrc(source);
 };
 
@@ -186,18 +189,22 @@ export const mobileLibrary: LibraryApi = {
     success([...tracks].sort(() => Math.random() - 0.5).slice(0, limit)),
   isScanning: async () => success(false),
   addScanDir: async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      recursive: true,
-      fileAccessMode: "copy",
-    });
-    if (!selected) return { success: false, error: "canceled" };
-    if (!scanDirs.includes(selected)) {
-      scanDirs = [...scanDirs, selected];
-      persist();
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        recursive: true,
+        fileAccessMode: "copy",
+      });
+      if (!selected) return { success: false, error: "canceled" };
+      if (!scanDirs.includes(selected)) {
+        scanDirs = [...scanDirs, selected];
+        persist();
+      }
+      return success(selected);
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
-    return success(selected);
   },
   removeScanDir: async (directory) => {
     scanDirs = scanDirs.filter((item) => item !== directory);

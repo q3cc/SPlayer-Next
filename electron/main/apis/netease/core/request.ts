@@ -6,6 +6,7 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { splitCookiesString } from "set-cookie-parser";
 import {
   API_DOMAIN,
   DOMAIN,
@@ -289,10 +290,12 @@ export const createRequest = async (
     throw new NeteaseRequestError(answer);
   }
 
-  // 收集 set-cookie
-  const setCookie =
-    (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ??
-    (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
+  // WebKit 会合并多个 Set-Cookie；必须保留后面的 MUSIC_U/__csrf，且不能拆开 Expires 日期。
+  const cookieHeaders =
+    (res.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
+  const setCookie = (
+    cookieHeaders.length ? cookieHeaders : [res.headers.get("set-cookie") ?? ""]
+  ).flatMap(splitCookiesString);
   answer.cookie = setCookie.map((x) => x.replace(/\s*Domain=[^(;|$)]+;*/, ""));
 
   // xeapi 会话密钥由响应头下发，缓存供后续请求复用

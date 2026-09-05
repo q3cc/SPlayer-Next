@@ -4,6 +4,9 @@ import { searchSongs } from "@/apis/search";
 import { resolveNeteaseUrl } from "@/apis/song/netease";
 import { reportBootStage } from "@/boot";
 import { useSettingsStore } from "@/stores/settings";
+import { useStatusStore } from "@/stores/status";
+import { useMediaStore } from "@/stores/media";
+import { useLibraryStore } from "@/stores/library";
 import { CURRENT_AGREEMENT_VERSION } from "@shared/constants/agreement";
 import { appCacheDir, join } from "@tauri-apps/api/path";
 import { mkdir, remove, writeFile } from "@tauri-apps/plugin-fs";
@@ -69,6 +72,60 @@ const testHomeRecommendationsVisible = async (): Promise<void> => {
       sections.every((section) => section && section.getBoundingClientRect().height > 0)
     ) {
       reportBootStage("home-recommendations-ready");
+      const playerButton = document.createElement("button");
+      playerButton.textContent = "Open test player";
+      playerButton.style.cssText =
+        "position:fixed;right:40px;top:80px;z-index:9999;background:#fff;color:#000;padding:8px";
+      playerButton.onclick = async () => {
+        const status = useStatusStore();
+        status.isPlayerExpanded = !status.isPlayerExpanded;
+        if (!status.isPlayerExpanded) {
+          playerButton.textContent = "Open test player";
+          return;
+        }
+        useMediaStore().setTrack({
+          id: "layout-test",
+          source: "local",
+          title: "SPlayer layout test",
+          artists: [{ name: "SPlayer" }],
+          duration: 120000,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const root = document.querySelector<HTMLElement>(".full-player");
+        const background = root?.querySelector<HTMLElement>(".bg-solid-wrap");
+        const fillsWindow = (node: HTMLElement | null | undefined): boolean => {
+          const rect = node?.getBoundingClientRect();
+          return (
+            !!rect &&
+            Math.abs(rect.top) < 1 &&
+            Math.abs(rect.left) < 1 &&
+            Math.abs(rect.width - innerWidth) < 1 &&
+            Math.abs(rect.height - innerHeight) < 1
+          );
+        };
+        if (!fillsWindow(root) || !fillsWindow(background)) {
+          playerButton.textContent = "Player edge test failed";
+          reportBootStage("player-edge-failed");
+          return;
+        }
+        playerButton.textContent = "Close test player";
+        reportBootStage("player-edge-ready");
+      };
+      document.body.append(playerButton);
+      const folderButton = document.createElement("button");
+      folderButton.textContent = "Open test folder picker";
+      folderButton.style.cssText =
+        "position:fixed;right:40px;top:125px;z-index:9998;background:#fff;color:#000;padding:8px";
+      folderButton.onclick = async () => {
+        const result = await useLibraryStore().addScanDir();
+        if (result.success || result.error === "canceled") {
+          reportBootStage("folder-picker-returned");
+        } else {
+          folderButton.textContent = `Folder picker failed: ${result.error}`;
+          reportBootStage("folder-picker-failed");
+        }
+      };
+      document.body.append(folderButton);
       const checkLayout = (): void => {
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
@@ -90,7 +147,7 @@ const testHomeRecommendationsVisible = async (): Promise<void> => {
 };
 
 const createSilentWav = (): Uint8Array => {
-  const samples = 800;
+  const samples = 16000;
   const buffer = new ArrayBuffer(44 + samples * 2);
   const view = new DataView(buffer);
   const text = (offset: number, value: string): void => {
@@ -123,6 +180,11 @@ const testLibraryScan = async (): Promise<void> => {
     if (tracks.length !== 1 || tracks[0]?.title !== "smoke") {
       throw new Error("mobile directory scan returned invalid tracks");
     }
+    const loaded = await window.api.player.load(`file://${await join(directory, "smoke.wav")}`, {
+      autoPlay: false,
+    });
+    if (!loaded.success) throw new Error(`local audio load: ${loaded.error}`);
+    await window.api.player.stop();
   } finally {
     await remove(directory, { recursive: true }).catch(() => undefined);
   }

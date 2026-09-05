@@ -123,7 +123,7 @@ jobs:
           else
             simulator_target="x86_64"
           fi
-          device_id="$(xcrun simctl list devices available | sed -nE '/iPad/ s/.*\(([0-9A-F-]{36})\).*/\1/p' | head -1)"
+          device_id="$(xcrun simctl list devices available | sed -nE '/iPad.*11-inch/ s/.*\(([0-9A-F-]{36})\).*/\1/p' | head -1)"
           if [[ -z "$device_id" ]]; then
             echo "No available iPad simulator was found" >&2
             exit 1
@@ -274,7 +274,7 @@ jobs:
           fi
 
       - name: Verify iPad portrait and landscape layouts
-        if: matrix.kind == 'smoke'
+        if: always() && matrix.kind == 'smoke' && env.IOS_SIMULATOR_DEVICE != ''
         timeout-minutes: 8
         shell: bash
         run: |
@@ -290,6 +290,7 @@ jobs:
           cp "$data_container/tmp/splayer-boot.log" ios-smoke/layout-boot.log
           grep -Fxq 'layout-desktop-ready' ios-smoke/layout-boot.log
           grep -Fxq 'layout-mobile-ready' ios-smoke/layout-boot.log
+          grep -Fxq 'player-edge-ready' ios-smoke/layout-boot.log
 
       - name: Upload iPad smoke-test diagnostics
         if: always() && matrix.kind == 'smoke'

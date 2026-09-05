@@ -17,6 +17,7 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
       "@shared": fileURLToPath(new URL("./shared", import.meta.url)),
+      "@main": fileURLToPath(new URL("./electron/main", import.meta.url)),
       "@windows": fileURLToPath(new URL("./windows", import.meta.url)),
       "@root": fileURLToPath(new URL("./", import.meta.url)),
     },

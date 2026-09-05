@@ -31,3 +31,6 @@ objc2-avf-audio = { version = "0.3.2", default-features = false, features = ["AV
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+tauri-plugin-dialog = { path = "vendor/tauri-plugin-dialog-2.7.3" }
