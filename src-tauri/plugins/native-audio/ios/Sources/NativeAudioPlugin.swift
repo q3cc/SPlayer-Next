@@ -38,6 +38,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
   private var pendingLoad: Invoke?
   private var loadTimeout: DispatchWorkItem?
   private var autoPlay = true
+  private var sourceURL: URL?
   private var visible = true
   private var timer: Timer?
   private var remoteTargets: [(MPRemoteCommand, Any)] = []
@@ -86,6 +87,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
         self.audioEffects = AudioEffects()
         player.attach(nodes: [self.audioEffects.equalizer, self.audioEffects.timePitch])
         self.player = player
+        self.sourceURL = url
         self.autoPlay = request.autoPlay
         self.applyEffects()
         // 预载不应短暂漏出声音，缓冲完成后再恢复目标音量。
@@ -108,7 +110,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
   private func applyEffects() {
     guard let player = player else { return }
     audioEffects.apply(effects)
-    player.volume = effects.volume
+    player.volume = pendingLoad != nil && !autoPlay ? 0 : effects.volume
     player.rate = effects.speed
     updatePosition()
   }
@@ -138,8 +140,12 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
       case "play":
         do { try AVAudioSession.sharedInstance().setActive(true) }
         catch { invoke.reject(error.localizedDescription); return }
-        player.resume()
-      case "pause": player.pause()
+        self.autoPlay = true
+        if player.state == .stopped, let url = self.sourceURL { player.play(url: url) }
+        else { player.resume() }
+      case "pause":
+        self.resumeAfterInterruption = false
+        player.pause()
       case "stop":
         self.pendingLoad?.reject("播放已停止")
         self.pendingLoad = nil
@@ -236,13 +242,20 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
   private func installControls() {
     let center = MPRemoteCommandCenter.shared()
     for (command, action) in [(center.playCommand, "play"), (center.pauseCommand, "pause"),
+                             (center.togglePlayPauseCommand, "toggle"),
                              (center.nextTrackCommand, "next"), (center.previousTrackCommand, "prev")] {
       command.isEnabled = true
       let target = command.addTarget { [weak self] _ in
         guard let self = self, let player = self.player else { return .noSuchContent }
         DispatchQueue.main.async {
-          if action == "play" { player.resume() }
-          else if action == "pause" { player.pause() }
+          if action == "play" || (action == "toggle" && player.state != .playing) {
+            do { try AVAudioSession.sharedInstance().setActive(true) }
+            catch { self.trigger("error", data: ["message": error.localizedDescription]); return }
+            self.autoPlay = true
+            if player.state == .stopped, let url = self.sourceURL { player.play(url: url) }
+            else { player.resume() }
+          }
+          else if action == "pause" || action == "toggle" { self.resumeAfterInterruption = false; player.pause() }
           else { self.trigger("action", data: ["type": action]) }
           self.updatePosition()
         }
@@ -293,9 +306,11 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
     DispatchQueue.main.async {
       guard self.player === player else { return }
       self.loadTimeout?.cancel()
-      if !self.autoPlay { player.pause(); player.volume = self.effects.volume }
-      self.pendingLoad?.resolve(self.snapshot())
-      self.pendingLoad = nil
+      if let pending = self.pendingLoad {
+        if !self.autoPlay { player.pause(); player.volume = self.effects.volume }
+        self.pendingLoad = nil
+        pending.resolve(self.snapshot())
+      }
     }
   }
   func audioPlayerStateChanged(player: AudioPlayer, with newState: AudioPlayerState, previous: AudioPlayerState) {

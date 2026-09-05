@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
   name: "tauri-plugin-native-audio",
-  platforms: [.iOS(.v16)],
+  platforms: [.iOS(.v16), .macOS(.v13), .tvOS(.v16)],
   products: [.library(name: "tauri-plugin-native-audio", type: .static, targets: ["tauri-plugin-native-audio"])],
   dependencies: [
     .package(name: "Tauri", path: "../.tauri/tauri-api"),

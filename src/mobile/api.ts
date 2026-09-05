@@ -36,6 +36,19 @@ const loadPlayer = async (): Promise<PlayerApi> => {
   return player;
 };
 
+/** 设置、恢复备份与重置都同步当前播放中的均衡器。 */
+const syncMobileEqualizer = async (): Promise<void> => {
+  const player = await loadPlayer();
+  const equalizer = store.get("player.equalizer");
+  const results = [
+    await player.setEqualizerBands([...equalizer.bands]),
+    await player.setPreampGain(equalizer.preamp),
+    await player.setEqualizerEnabled(equalizer.enabled),
+  ];
+  const failed = results.find((result) => !result.success);
+  if (failed) throw new Error(failed.error || "音效设置失败");
+};
+
 const mobilePlayer = new Proxy(
   {},
   {
@@ -245,15 +258,7 @@ const api = {
       if (key === "system.diagnosticLogging") await setDiagnosticsEnabled(value === true);
       store.set(key, value);
       if (key === "player.equalizer" || key.startsWith("player.equalizer.")) {
-        const player = await loadPlayer();
-        const equalizer = store.get("player.equalizer");
-        const results = [
-          await player.setEqualizerBands([...equalizer.bands]),
-          await player.setPreampGain(equalizer.preamp),
-          await player.setEqualizerEnabled(equalizer.enabled),
-        ];
-        const failed = results.find((result) => !result.success);
-        if (failed) throw new Error(failed.error || "音效设置失败");
+        await syncMobileEqualizer();
       }
       if (key === "update.channel") void mobileUpdate.check(true);
       if (key.startsWith("media.")) mobileMediaSession.refresh();
@@ -263,11 +268,13 @@ const api = {
     reset: async () => {
       await setDiagnosticsEnabled(false);
       store.clear();
+      await syncMobileEqualizer();
       mobileMediaSession.refresh();
       await mobileLyricPip.update();
     },
     replaceAll: async (value: unknown) => {
       store.replaceAll(value);
+      await syncMobileEqualizer();
       await setDiagnosticsEnabled(store.get("system.diagnosticLogging") === true);
       mobileMediaSession.refresh();
       await mobileLyricPip.update();
