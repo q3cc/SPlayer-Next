@@ -118,7 +118,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
   @objc func configure(_ invoke: Invoke) throws {
     let value = try invoke.parseArgs(EffectRequest.self)
     guard value.bands.count == 10,
-          value.bands.allSatisfy({ $0.isFinite && abs($0) <= 12 }),
+          value.bands.allSatisfy({ $0.isFinite && abs($0) <= 15 }),
           value.volume.isFinite, (0...1).contains(value.volume),
           value.speed.isFinite, (0.5...2).contains(value.speed),
           value.pitch.isFinite, abs(value.pitch) <= 12,

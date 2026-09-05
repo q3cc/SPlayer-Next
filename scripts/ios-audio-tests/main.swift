@@ -84,4 +84,9 @@ for (index, frequency) in [31.0, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 1600
   print("Band \(index) \(frequency)Hz +6dB ratio=\(ratio)")
   precondition((1.8...2.2).contains(ratio), "频段 \(frequency)Hz 增益错误")
 }
-print("PASS: 17 项原生音效输出检查")
+let maximumRatio = rms(try render(gain: 15)) / rms(flat)
+let minimumRatio = rms(try render(gain: -15)) / rms(flat)
+print("EQ +15dB ratio=\(maximumRatio), -15dB ratio=\(minimumRatio)")
+precondition((5.4...5.9).contains(maximumRatio), "最大频段增益没有实际生效")
+precondition((0.16...0.20).contains(minimumRatio), "最小频段增益没有实际生效")
+print("PASS: 19 项原生音效输出检查")

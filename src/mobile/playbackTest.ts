@@ -133,7 +133,7 @@ export const installPlaybackTest = async (): Promise<void> => {
   });
   let backgroundPosition = 0;
   button("Verify equalizer test", async () => {
-    const bands = [3, -2, 1, 0, -3, 6, 2, -1, 4, -2];
+    const bands = [15, -15, 1, 0, -3, 6, 2, -1, 4, -2];
     await settings.setSystem("player.equalizer.bands", bands);
     await settings.setSystem("player.equalizer.preamp", -6);
     await delay(500);
