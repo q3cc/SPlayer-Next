@@ -1605,7 +1605,7 @@
     },
     "dynamicLyrics": {
       "label": "Dynamic Lyrics",
-      "description": "Show the current lyric as the Lock Screen and Control Center title, with “Song - Artist” below; restore song info when no lyric is active"
+      "description": "Show the current lyric as the Lock Screen and Control Center title, with “Song - Artist” below; restore song info if no new lyric starts within 3 seconds after the line ends"
     },
     "discordEnabled": {
       "label": "Discord Status",

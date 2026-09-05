@@ -8,9 +8,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const query = ref("");
-const isFocused = ref(false);
-
-const isSearchActive = computed(() => isFocused.value && query.value.length > 0);
+const isSearchActive = computed(() => query.value.length > 0);
 
 watch(isSearchActive, (v) => emit("active-change", v));
 
@@ -54,21 +52,11 @@ const handleSelect = (r: SearchResult) => {
   emit("select", r.categoryId, r.itemKey);
   query.value = "";
 };
-
-const handleBlur = () => {
-  setTimeout(() => (isFocused.value = false), 150);
-};
 </script>
 
 <template>
   <div class="relative">
-    <SInput
-      v-model="query"
-      :placeholder="t('settings.search')"
-      clearable
-      @focus="isFocused = true"
-      @blur="handleBlur"
-    >
+    <SInput v-model="query" :placeholder="t('settings.search')" clearable>
       <template #prefix>
         <IconLucideSearch class="size-3.5 text-on-surface-variant/50" />
       </template>

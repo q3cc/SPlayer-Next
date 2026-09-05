@@ -26,9 +26,14 @@ const refresh = (): void => {
   ) {
     const time = position + offset;
     let index = findLyricIndex(lyrics.lyric, time);
-    while (index >= 0 && lyrics.lyric[index].isBG) index--;
+    // 空白行与背景行不打断主歌词的短暂保留。
+    while (
+      index >= 0 &&
+      (lyrics.lyric[index].isBG || !lyrics.lyric[index].words.some((word) => word.word.trim()))
+    )
+      index--;
     const line = lyrics.lyric[index];
-    if (line && time >= line.startTime && time < line.endTime) {
+    if (line && time >= line.startTime && time < line.endTime + 3000) {
       lyric = line.words
         .map((word) => word.word)
         .join("")
