@@ -1,0 +1,20 @@
+name: SPlayerLayoutTests
+options:
+  bundleIdPrefix: top.imsyy.splayer-next.tests
+targets:
+  LayoutTests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources: [LayoutTests.swift]
+    settings:
+      GENERATE_INFOPLIST_FILE: YES
+      CODE_SIGNING_ALLOWED: NO
+      SWIFT_VERSION: "5.0"
+schemes:
+  LayoutTests:
+    build:
+      targets:
+        LayoutTests: [test]
+    test:
+      targets: [LayoutTests]

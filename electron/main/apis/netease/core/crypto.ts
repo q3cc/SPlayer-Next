@@ -10,13 +10,11 @@ import {
   createDecipheriv,
   createHash,
   createHmac,
-  createPublicKey,
-  diffieHellman,
-  generateKeyPairSync,
   publicEncrypt,
   constants,
   randomBytes,
 } from "node:crypto";
+import { x25519 } from "@noble/curves/ed25519.js";
 import { gunzipSync } from "node:zlib";
 import { BASE62, EAPI_KEY, IV, LINUX_API_KEY, PRESET_KEY, PUBLIC_KEY } from "./config";
 
@@ -174,8 +172,6 @@ const XEAPI_STATIC_KEY = Buffer.from(
 /** xeapi 签名密钥（HMAC-SHA256，按字符串原样作为 key，不解码） */
 const XEAPI_SIGN_KEY =
   "mUHCwVNWJbunMqAHf5MImuirT6plvs6VSFW62MGHstFQxhBGdEoIhLItH3djc4+FB/OKty3+lL2rGeoFBpVe5g==";
-/** X25519 公钥的 RFC 8410 SPKI 固定前缀（裸 32 字节前补此头再导入） */
-const X25519_SPKI_PREFIX = Buffer.from("302a300506032b656e032100", "hex");
 
 /** xeapi 服务端公钥状态（反爬接口返回并缓存） */
 export interface XeapiPublicKey {
@@ -197,19 +193,15 @@ export interface XeapiOptions {
 
 /** 变长密钥 AES-ECB 加密（按密钥长度选 128/256，PKCS7 padding） */
 const aesEcbEncrypt = (key: Buffer, plaintext: Buffer): Buffer => {
-  const cipher = createCipheriv(`aes-${key.length * 8}-ecb`, key, null);
+  const cipher = createCipheriv(`aes-${key.length * 8}-ecb`, key, Buffer.alloc(0));
   return Buffer.concat([cipher.update(plaintext), cipher.final()]);
 };
 
 /** 变长密钥 AES-ECB 解密 */
 const aesEcbDecrypt = (key: Buffer, ciphertext: Buffer): Buffer => {
-  const decipher = createDecipheriv(`aes-${key.length * 8}-ecb`, key, null);
+  const decipher = createDecipheriv(`aes-${key.length * 8}-ecb`, key, Buffer.alloc(0));
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 };
-
-/** 裸 32 字节 X25519 公钥补 SPKI 头后导入为 KeyObject */
-const createX25519PublicKey = (raw: Buffer) =>
-  createPublicKey({ key: Buffer.concat([X25519_SPKI_PREFIX, raw]), format: "der", type: "spki" });
 
 /** 由 ECDH 共享密钥 + 临时公钥派生 16 字节 AES 密钥（HKDF 风格） */
 const deriveX25519AesKey = (sharedSecret: Buffer, ephemeralPublicKey: Buffer): Buffer => {
@@ -240,10 +232,12 @@ const xeapiMidTransform = (ciphertext: Buffer): Buffer => {
 
 /** 用 X25519 ECDH + AES-GCM 封装动态密钥（S 字段） */
 const xeapiEncryptS = (dynamicKey: Buffer, publicKeyState: XeapiPublicKey, os: string): Buffer => {
-  const peerKey = createX25519PublicKey(Buffer.from(publicKeyState.publicKey, "base64"));
-  const { publicKey, privateKey } = generateKeyPairSync("x25519");
-  const ephemeralRaw = Buffer.from(publicKey.export({ format: "der", type: "spki" })).subarray(-32);
-  const sharedSecret = diffieHellman({ privateKey, publicKey: peerKey });
+  // Node 与 WKWebView 共用标准 X25519 实现，避免移动端缺少 KeyObject 等原生接口。
+  const privateKey = randomBytes(32);
+  const ephemeralRaw = Buffer.from(x25519.getPublicKey(privateKey));
+  const sharedSecret = Buffer.from(
+    x25519.getSharedSecret(privateKey, Buffer.from(publicKeyState.publicKey, "base64")),
+  );
   const aesKey = deriveX25519AesKey(sharedSecret, ephemeralRaw);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-128-gcm", aesKey, iv);

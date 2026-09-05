@@ -8,6 +8,8 @@ on:
     paths:
       - ".github/workflows/ios-unsigned.yml"
       - "src/**"
+      - "electron/main/apis/**"
+      - "scripts/ios-layout-tests/**"
       - "src-tauri/**"
       - "shared/**"
       - "public/**"
@@ -169,7 +171,7 @@ jobs:
 
           wait_for_network() {
             local boot_log="$1"
-            for _ in {1..45}; do
+            for _ in {1..90}; do
               if [[ -f "$boot_log" ]] && grep -Fxq 'network-smoke-ready' "$boot_log"; then
                 return 0
               fi
@@ -270,6 +272,24 @@ jobs:
             echo "The home recommendation UI smoke test failed" >&2
             exit 1
           fi
+
+      - name: Verify iPad portrait and landscape layouts
+        if: matrix.kind == 'smoke'
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodegen generate --spec scripts/ios-layout-tests/project.yml
+          xcodebuild test -project scripts/ios-layout-tests/SPlayerLayoutTests.xcodeproj \
+            -scheme LayoutTests -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_DEVICE" \
+            -parallel-testing-enabled NO -resultBundlePath ios-smoke/layout.xcresult \
+            CODE_SIGNING_ALLOWED=NO > ios-smoke/layout-tests.log 2>&1
+          xcrun xcresulttool export attachments --path ios-smoke/layout.xcresult \
+            --output-path ios-smoke/layout-screenshots
+          data_container="$(xcrun simctl get_app_container "$IOS_SIMULATOR_DEVICE" top.imsyy.splayer-next.ios data)"
+          cp "$data_container/tmp/splayer-boot.log" ios-smoke/layout-boot.log
+          grep -Fxq 'layout-desktop-ready' ios-smoke/layout-boot.log
+          grep -Fxq 'layout-mobile-ready' ios-smoke/layout-boot.log
 
       - name: Upload iPad smoke-test diagnostics
         if: always() && matrix.kind == 'smoke'

@@ -26,8 +26,7 @@ import IconLucideDownload from "~icons/lucide/download";
 const status = useStatusStore();
 const media = useMediaStore();
 const settings = useSettingsStore();
-const isCompactLayout = useMediaQuery("(max-width: 900px)");
-const useMobileLayout = computed(() => isIOS || isCompactLayout.value);
+const useMobileLayout = useMediaQuery("(max-width: 900px)");
 const fav = useFavorite();
 const { enqueue: enqueueDownload } = useDownload();
 const { t } = useI18n();
@@ -203,7 +202,10 @@ const showComments = (): void => {
       <div
         v-show="isPlayerExpanded"
         class="fixed inset-0 z-200 overflow-hidden text-cover"
-        :class="immersive ? 'cursor-none [&_*]:!cursor-none' : ''"
+        :class="[
+          immersive ? 'cursor-none [&_*]:!cursor-none' : '',
+          isIOS && !useMobileLayout ? 'ios-wide-player' : '',
+        ]"
         style="--lp-color: rgb(var(--s-cover))"
         @mouseenter="onPlayerMouseEnter"
         @mouseleave="onPlayerMouseLeave"
@@ -263,7 +265,7 @@ const showComments = (): void => {
               <template #icon><IconLucideTextQuote /></template>
             </SButton>
           </div>
-          <div v-if="!useMobileLayout" class="app-no-drag flex items-center gap-3">
+          <div v-if="!useMobileLayout && !isIOS" class="app-no-drag flex items-center gap-3">
             <SButton type="cover" variant="ghost" circle :size="40" @click="toggleFullscreen">
               <template #icon>
                 <IconLucideMinimize v-if="isFullscreen" />
@@ -689,6 +691,13 @@ const showComments = (): void => {
 
 .mobile-full-player-main {
   top: calc(3.5rem + var(--s-safe-top));
+}
+
+.ios-wide-player {
+  top: var(--s-safe-top);
+  right: var(--s-safe-right);
+  bottom: var(--s-safe-bottom);
+  left: var(--s-safe-left);
 }
 
 .mobile-cover-panel > div {

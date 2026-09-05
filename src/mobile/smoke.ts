@@ -1,5 +1,7 @@
 import { fetchArtists, fetchNewAlbums, fetchRecommendPlaylists } from "@/apis/recommend/netease";
 import { neteaseQrLoginAdapter } from "@/apis/login/netease";
+import { searchSongs } from "@/apis/search";
+import { resolveNeteaseUrl } from "@/apis/song/netease";
 import { reportBootStage } from "@/boot";
 import { useSettingsStore } from "@/stores/settings";
 import { CURRENT_AGREEMENT_VERSION } from "@shared/constants/agreement";
@@ -61,10 +63,26 @@ const testHomeRecommendationsVisible = async (): Promise<void> => {
     if (
       location.hash === "#/" &&
       page?.getBoundingClientRect().height &&
-      mobileNav?.getBoundingClientRect().height &&
+      (matchMedia("(max-width: 900px)").matches
+        ? mobileNav?.getBoundingClientRect().height
+        : !mobileNav && document.querySelector(".app-viewport aside")) &&
       sections.every((section) => section && section.getBoundingClientRect().height > 0)
     ) {
       reportBootStage("home-recommendations-ready");
+      const checkLayout = (): void => {
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const compact = matchMedia("(max-width: 900px)").matches;
+            const nav = document.querySelector(".mobile-nav");
+            const sidebar = document.querySelector(".app-viewport aside");
+            if (compact ? nav && !sidebar : sidebar && !nav) {
+              reportBootStage(compact ? "layout-mobile-ready" : "layout-desktop-ready");
+            }
+          }),
+        );
+      };
+      window.addEventListener("resize", checkLayout);
+      checkLayout();
       return;
     }
   }
@@ -138,6 +156,31 @@ export const runMobileSmokeTest = async (): Promise<void> => {
     await testLibraryScan();
     reportBootStage("library-scan-ready");
 
+    // 覆盖游客会话初始化、搜索、播放地址与 WKWebView 音频解码，不能仅检查首页公开接口。
+    const search = await searchSongs("netease", "义勇军进行曲", 0, 5);
+    requireItems("search songs", search.items);
+    reportBootStage("search-ready");
+    let played = false;
+    for (const track of search.items) {
+      const source = await resolveNeteaseUrl(track, "lq");
+      if (!source.available) continue;
+      const loaded = await window.api.player.load(source.url, { meta: track, autoPlay: true });
+      if (!loaded.success) throw new Error(`playback load: ${loaded.error}`);
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        const status = await window.api.player.getStatus();
+        if (status.success && status.data?.state === "playing" && status.data.position > 0) {
+          played = true;
+          break;
+        }
+      }
+      await window.api.player.stop();
+      if (!played) throw new Error("audio playback position did not advance");
+      break;
+    }
+    if (!played) throw new Error("search returned no playable tracks");
+    reportBootStage("search-playback-ready");
+
     const qr = await neteaseQrLoginAdapter.create();
     if (!qr.key || !qr.content.includes("/st/platform/scanlogin")) {
       throw new Error("web QR login URL missing");
@@ -153,5 +196,6 @@ export const runMobileSmokeTest = async (): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     reportBootStage(`network-smoke-failed:${message.replace(/[\r\n]/g, " ").slice(0, 160)}`);
+    if (error instanceof Error && error.stack) console.error("[mobile-smoke]", error.stack);
   }
 };

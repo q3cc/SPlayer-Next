@@ -9,9 +9,8 @@ import { isIOS } from "@/utils/config";
 const route = useRoute();
 const status = useStatusStore();
 const settings = useSettingsStore();
-const narrowLayout = useMediaQuery("(max-width: 900px)");
-// iPhone 与 iPad 始终复用移动导航；前台调度缩放时媒体查询仍负责非 iOS 窄窗口。
-const isCompactLayout = computed(() => isIOS || narrowLayout.value);
+// 随实际窗口宽度切换，iPad 横屏复用桌面布局，分屏窄窗口使用移动布局。
+const isCompactLayout = useMediaQuery("(max-width: 900px)");
 
 // 接入 orpheus 协议唤起与外部音频文件播放
 useOrpheusProtocol();
@@ -175,7 +174,11 @@ const playerBarInnerClass = computed(() => {
     enter-from-class="translate-y-full"
     leave-to-class="translate-y-full"
   >
-    <div v-if="showPlayerBar" :class="playerBarWrapperClass">
+    <div
+      v-if="showPlayerBar"
+      :class="playerBarWrapperClass"
+      :style="isIOS && !isCompactLayout ? { bottom: 'var(--s-safe-bottom)' } : undefined"
+    >
       <footer :class="playerBarInnerClass">
         <PlayerBar />
       </footer>
@@ -207,8 +210,23 @@ const playerBarInnerClass = computed(() => {
 }
 
 .ios-app-viewport {
+  padding-top: var(--s-safe-top);
   padding-right: var(--s-safe-right);
+  padding-bottom: var(--s-safe-bottom);
   padding-left: var(--s-safe-left);
+}
+
+.ios-app-viewport .mobile-header {
+  height: 3.5rem;
+  padding-top: 0;
+}
+
+.ios-app-viewport .mobile-main-shell {
+  padding-bottom: 4rem;
+}
+
+.ios-app-viewport .mobile-main-shell.has-player {
+  padding-bottom: 8.5rem;
 }
 
 .mobile-header {

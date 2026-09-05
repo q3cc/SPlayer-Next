@@ -59,6 +59,11 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@hono/node-server": "^2.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@noble/curves": "^2.4.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-deep-link": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
@@ -67,10 +72,6 @@
     "@tauri-apps/plugin-opener": "^2.0.0",
     "@tauri-apps/plugin-os": "^2.0.0",
     "@tauri-apps/plugin-store": "^2.0.0",
-    "@electron-toolkit/preload": "^3.0.2",
-    "@electron-toolkit/utils": "^4.0.0",
-    "@hono/node-server": "^2.1.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
     "atomically": "^2.1.1",
     "better-sqlite3": "^13.0.3",
     "electron-log": "^5.4.4",
@@ -83,7 +84,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4",
     "@applemusic-like-lyrics/core": "^0.5.2",
     "@electron-toolkit/eslint-config-ts": "^3.1.0",
     "@electron-toolkit/tsconfig": "^2.0.0",
@@ -99,6 +99,7 @@
     "@pixi/filter-bulge-pinch": "^5.1.1",
     "@pixi/filter-color-matrix": "^7.4.3",
     "@pixi/sprite": "^7.4.3",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.19.17",
     "@types/sortablejs": "^1.15.9",
