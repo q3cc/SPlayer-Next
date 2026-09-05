@@ -80,8 +80,9 @@ html.mobile #app {
     display: none;
   }
 
-  html.mobile [role="dialog"],
-  html.mobile [role="alertdialog"] {
+  /* 颜色、音量等浮层同样使用 dialog 角色，但不应套用整页弹窗宽度。 */
+  html.mobile [role="dialog"]:not([data-s-popover]),
+  html.mobile [role="alertdialog"]:not([data-s-popover]) {
     width: calc(100vw - 1rem) !important;
     max-width: none !important;
     max-height: calc(

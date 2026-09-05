@@ -130,6 +130,7 @@ const bridgeClasses = computed(() =>
 
     <PopoverPortal>
       <PopoverContent
+        data-s-popover
         :side="side"
         :align="align"
         :side-offset="sideOffset"
