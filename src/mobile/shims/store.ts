@@ -4,13 +4,17 @@ import type { ConfigPath, PathValue } from "@root/electron/main/store/types";
 import { deepMerge, getByPath, setByPath } from "@root/electron/main/store/utils";
 
 const STORAGE_KEY = "splayer.mobile.settings";
+const mobileDefaults: SystemConfig = {
+  ...defaultSystemConfig,
+  desktopLyric: { ...defaultSystemConfig.desktopLyric, doubleLine: false },
+};
 
 const read = (): SystemConfig => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Record<string, unknown>;
-    return deepMerge(defaultSystemConfig, raw);
+    return deepMerge(mobileDefaults, raw);
   } catch {
-    return structuredClone(defaultSystemConfig);
+    return structuredClone(mobileDefaults);
   }
 };
 
@@ -32,12 +36,12 @@ export const store = {
     flush();
   },
   clear(): void {
-    data = structuredClone(defaultSystemConfig);
+    data = structuredClone(mobileDefaults);
     flush();
   },
   replaceAll(input: unknown): void {
     const raw = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-    data = deepMerge(defaultSystemConfig, raw);
+    data = deepMerge(mobileDefaults, raw);
     flush();
   },
   flushImmediate: flush,

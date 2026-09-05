@@ -50,9 +50,61 @@ describe("歌词画中画", () => {
     expect(pipContent(value)).toEqual({
       title: "歌曲",
       artist: "歌手",
+      cover: "",
       offset: 250,
-      lines: [{ start: 1000, end: 3000, text: "第一句", translation: "翻译" }],
+      lines: [{ start: 1000, end: 3000, rows: ["第一句", "翻译"] }],
     });
+  });
+
+  it("默认单行，不附带歌名或下一句", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const single = { ...value, lyric: [{ ...value.lyric[0], translatedLyric: "" }] };
+    expect(pipContent(single).lines[0].rows).toEqual(["第一句"]);
+  });
+
+  it("双行使用下一句；末句不补空白", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const first = { ...value.lyric[0], translatedLyric: "" };
+    const two = {
+      ...value,
+      lyric: [
+        first,
+        { ...first, startTime: 4000, words: [{ word: "第二句", startTime: 4000, endTime: 5000 }] },
+      ],
+    };
+    const lines = pipContent(two, { doubleLine: true, showTranslation: true }).lines;
+    expect(lines[0].rows).toEqual(["第一句", "第二句"]);
+    expect(lines[1].rows).toEqual(["第二句"]);
+  });
+
+  it("有音译和翻译时替代下一句，不混入第二句原文", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const translated = {
+      ...value,
+      lyric: [
+        { ...value.lyric[0], romanLyric: "dai ichi" },
+        {
+          ...value.lyric[0],
+          startTime: 4000,
+          words: [{ word: "第二句", startTime: 4000, endTime: 5000 }],
+        },
+      ],
+    };
+    expect(
+      pipContent(translated, { doubleLine: true, showTranslation: true }).lines[0].rows,
+    ).toEqual(["第一句", "dai ichi", "翻译"]);
+    expect(
+      pipContent(translated, { doubleLine: true, showTranslation: false }).lines[0].rows,
+    ).toEqual(["第一句", "第二句"]);
+  });
+
+  it("只有音译也不显示下一句，空白音译不占一行", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const first = { ...value.lyric[0], translatedLyric: "", romanLyric: "romaji" };
+    expect(pipContent({ ...value, lyric: [first] }).lines[0].rows).toEqual(["第一句", "romaji"]);
+    expect(pipContent({ ...value, lyric: [{ ...first, romanLyric: "  " }] }).lines[0].rows).toEqual(
+      ["第一句"],
+    );
   });
 
   it("关闭时不拉快照、不发送歌词和进度", async () => {

@@ -243,15 +243,18 @@ const api = {
     set: async (key: string, value: unknown) => {
       store.set(key, value);
       if (key.startsWith("media.")) mobileMediaSession.refresh();
+      if (key === "desktopLyric" || key.startsWith("desktopLyric.")) await mobileLyricPip.update();
     },
     getAll: async () => store.store,
     reset: async () => {
       store.clear();
       mobileMediaSession.refresh();
+      await mobileLyricPip.update();
     },
     replaceAll: async (value: unknown) => {
       store.replaceAll(value);
       mobileMediaSession.refresh();
+      await mobileLyricPip.update();
     },
     exportToFile: async (value: unknown) => {
       const path = await save({ defaultPath: "splayer-settings.json" });

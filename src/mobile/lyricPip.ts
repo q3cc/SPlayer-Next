@@ -2,11 +2,20 @@ import { addPluginListener, invoke } from "@tauri-apps/api/core";
 import type { NowPlayingSnapshot } from "@shared/types/nowPlaying";
 import type { PlayerStatus } from "@shared/types/player";
 import { toast } from "@/composables/useToast";
+import { store } from "./shims/store";
+import type { SystemConfig } from "@shared/types/settings";
 
 /** 复用已解析的歌词，仅把当前曲目的行文本交给系统画中画。 */
-export const pipContent = (value: NowPlayingSnapshot) => ({
+export const pipContent = (
+  value: NowPlayingSnapshot,
+  options: Pick<SystemConfig["desktopLyric"], "doubleLine" | "showTranslation"> = {
+    doubleLine: false,
+    showTranslation: true,
+  },
+) => ({
   title: value.track?.title ?? "",
   artist: value.track?.artists.map((artist) => artist.name).join(" / ") ?? "",
+  cover: value.track?.cover ?? "",
   offset: value.lyricOffsetMs,
   lines: value.lyric
     .filter((line) => !line.isBG)
@@ -18,9 +27,23 @@ export const pipContent = (value: NowPlayingSnapshot) => ({
         .join("")
         .trim(),
       translation: line.translatedLyric,
+      roman: line.romanLyric ?? "",
     }))
     .filter((line) => line.text)
-    .sort((a, b) => a.start - b.start),
+    .sort((a, b) => a.start - b.start)
+    .map((line, index, lines) => {
+      const extras = options.showTranslation
+        ? [line.roman, line.translation].map((text) => text.trim()).filter(Boolean)
+        : [];
+      return {
+        start: line.start,
+        end: line.end,
+        rows: [
+          line.text,
+          ...(extras.length ? extras : options.doubleLine ? [lines[index + 1]?.text ?? ""] : []),
+        ].filter(Boolean),
+      };
+    }),
 });
 
 let active = false;
@@ -79,7 +102,7 @@ export const mobileLyricPip = {
     const token = ++revision;
     const value = await snapshot();
     if (token !== revision || (!active && !starting)) return;
-    await invoke("plugin:lyric-pip|update", pipContent(value));
+    await invoke("plugin:lyric-pip|update", pipContent(value, store.get("desktopLyric")));
   },
   async close(): Promise<void> {
     await invoke("plugin:lyric-pip|stop");

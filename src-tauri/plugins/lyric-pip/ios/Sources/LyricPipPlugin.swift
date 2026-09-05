@@ -3,12 +3,12 @@ import AVKit
 import Darwin
 import Tauri
 import UIKit
+import ImageIO
 
 private struct LyricRow: Decodable {
   let start: Double
   let end: Double
-  let text: String
-  let translation: String
+  let rows: [String]
 }
 
 private struct LyricContent: Decodable {
@@ -16,6 +16,12 @@ private struct LyricContent: Decodable {
   let artist: String
   let lines: [LyricRow]
   let offset: Double
+  let cover: String
+}
+
+/// 显示层作为视图主图层，随窗口尺寸变化同步布局。
+private class LyricVideoView: UIView {
+  override class var layerClass: AnyClass { AVSampleBufferDisplayLayer.self }
 }
 
 private struct PlaybackAnchor: Decodable {
@@ -29,7 +35,7 @@ private struct PlaybackAnchor: Decodable {
 @available(iOS 15.0, *)
 class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   AVPictureInPictureSampleBufferPlaybackDelegate {
-  private let displayLayer = AVSampleBufferDisplayLayer()
+  private var displayLayer = AVSampleBufferDisplayLayer()
   private var sourceView: UIView?
   private var controller: AVPictureInPictureController?
   private var readiness: NSKeyValueObservation?
@@ -47,6 +53,9 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var lastFrameTime = -Double.infinity
   private var frameCount = 0
   private var lastRenderError: String?
+  private var coverURL = ""
+  private var coverTask: URLSessionDataTask?
+  private var coverImage: UIImage?
 
   private var displayReadiness: String {
     if #available(iOS 17.4, *) { return String(displayLayer.isReadyForDisplay) }
@@ -61,6 +70,33 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let next = try invoke.parseArgs(LyricContent.self)
     DispatchQueue.main.async {
       self.content = next
+      if self.coverURL != next.cover {
+        self.coverTask?.cancel()
+        self.coverTask = nil
+        self.coverURL = next.cover
+        self.coverImage = nil
+        self.lastText = nil
+        if let url = URL(string: next.cover), ["https", "http"].contains(url.scheme ?? "") {
+          self.coverTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+            // 只解码唱片缩略图，不在小窗保留原始大封面。
+            let image = data.flatMap { CGImageSourceCreateWithData($0 as CFData, nil) }.flatMap {
+              CGImageSourceCreateThumbnailAtIndex($0, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 112
+              ] as CFDictionary)
+            }
+            DispatchQueue.main.async {
+              guard let self = self, self.coverURL == next.cover else { return }
+              self.coverTask = nil
+              self.coverImage = image.map { UIImage(cgImage: $0) }
+              self.lastText = nil
+              self.render(force: true)
+            }
+          }
+          self.coverTask?.resume()
+        }
+      }
       self.render()
       invoke.resolve()
     }
@@ -97,13 +133,13 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
         return
       }
       self.pendingStart = invoke
-      let view = UIView(frame: CGRect(
+      let view = LyricVideoView(frame: CGRect(
         x: max(0, parent.bounds.width - 252),
         y: max(0, parent.bounds.height - parent.safeAreaInsets.bottom - 225),
-        width: 240, height: 135))
+        width: 240, height: 60))
       view.isUserInteractionEnabled = false
       view.autoresizingMask = [.flexibleLeftMargin, .flexibleTopMargin]
-      view.layer.addSublayer(self.displayLayer)
+      self.displayLayer = view.layer as! AVSampleBufferDisplayLayer
       self.displayLayer.frame = view.bounds
       self.displayLayer.videoGravity = .resizeAspect
       parent.addSubview(view)
@@ -113,6 +149,13 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       let pip = AVPictureInPictureController(contentSource: source)
       pip.delegate = self
       pip.requiresLinearPlayback = true
+      // 系统没有公开的隐藏控件接口；仅在支持此 setter 的侧载系统上启用。
+      if pip.responds(to: NSSelectorFromString("setControlsStyle:")) {
+        pip.setValue(2, forKey: "controlsStyle")
+        self.log("controls-style=hidden")
+      } else {
+        self.log("controls-style=system (hidden style unavailable)")
+      }
       pip.canStartPictureInPictureAutomaticallyFromInline = false
       self.controller = pip
       self.lastText = nil
@@ -186,7 +229,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let active = line.flatMap { time < $0.end + 3000 ? $0 : nil }
     let title = content?.title.isEmpty == false ? content!.title : "SPlayer Next"
     let info = [title, content?.artist ?? ""].filter { !$0.isEmpty }.joined(separator: " - ")
-    let text = [active?.text ?? title, active?.translation ?? "", info]
+    let text = active?.rows ?? [title, info]
     if text != lastText || cachedFrame == nil {
       guard let buffer = drawFrame(text) else { return }
       cachedFrame = buffer
@@ -235,7 +278,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any],
       kCVPixelBufferMetalCompatibilityKey: true
     ]
-    let result = CVPixelBufferCreate(kCFAllocatorDefault, 640, 360, kCVPixelFormatType_32BGRA,
+    let result = CVPixelBufferCreate(kCFAllocatorDefault, 640, 160, kCVPixelFormatType_32BGRA,
       attributes as CFDictionary, &pixelBuffer)
     guard result == kCVReturnSuccess, let buffer = pixelBuffer else {
       reportRenderError("pixel-buffer: \(result)")
@@ -248,28 +291,49 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
     defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
     guard let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: 640,
-      height: 360, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+      height: 160, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
       space: CGColorSpaceCreateDeviceRGB(),
       bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
     else {
       reportRenderError("bitmap-context: creation failed")
       return nil
     }
-    context.setFillColor(UIColor(red: 0.07, green: 0.08, blue: 0.11, alpha: 1).cgColor)
-    context.fill(CGRect(x: 0, y: 0, width: 640, height: 360))
-    context.translateBy(x: 0, y: 360)
+    context.setFillColor(UIColor(white: 0.17, alpha: 1).cgColor)
+    context.fill(CGRect(x: 0, y: 0, width: 640, height: 160))
+    context.translateBy(x: 0, y: 160)
     context.scaleBy(x: 1, y: -1)
     UIGraphicsPushContext(context)
+    let disc = CGRect(x: 20, y: 24, width: 112, height: 112)
+    context.setFillColor(UIColor(white: 0.04, alpha: 1).cgColor)
+    context.fillEllipse(in: disc)
+    context.saveGState()
+    let coverRect = disc.insetBy(dx: 16, dy: 16)
+    context.addEllipse(in: coverRect)
+    context.clip()
+    if let image = coverImage {
+      let scale = max(coverRect.width / image.size.width, coverRect.height / image.size.height)
+      let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+      image.draw(in: CGRect(x: coverRect.midX - size.width / 2, y: coverRect.midY - size.height / 2,
+        width: size.width, height: size.height))
+    } else {
+      context.setFillColor(UIColor.darkGray.cgColor)
+      context.fill(coverRect)
+    }
+    context.restoreGState()
     let paragraph = NSMutableParagraphStyle()
-    paragraph.alignment = .center
+    paragraph.alignment = .left
     paragraph.lineBreakMode = .byTruncatingTail
-    let rects = [CGRect(x: 32, y: 65, width: 576, height: 138),
-                 CGRect(x: 32, y: 210, width: 576, height: 65),
-                 CGRect(x: 32, y: 302, width: 576, height: 30)]
     for i in 0..<text.count {
-      (text[i] as NSString).draw(in: rects[i], withAttributes: [
-        .font: UIFont.systemFont(ofSize: i == 0 ? 34 : (i == 1 ? 23 : 18),
-                                 weight: i == 0 ? .semibold : .regular),
+      let weight: UIFont.Weight = i == 0 ? .semibold : .regular
+      let baseSize: CGFloat = i == 0 ? 28 : 20
+      let naturalWidth = (text[i] as NSString).size(withAttributes: [
+        .font: UIFont.systemFont(ofSize: baseSize, weight: weight)
+      ]).width
+      let size = max(16, min(baseSize, baseSize * 464 / max(1, naturalWidth)))
+      let rect = CGRect(x: 152, y: (160 - CGFloat(text.count) * 34) / 2 + CGFloat(i) * 34,
+        width: 464, height: 34)
+      (text[i] as NSString).draw(in: rect, withAttributes: [
+        .font: UIFont.systemFont(ofSize: size, weight: weight),
         .foregroundColor: i == 0 ? UIColor.white : UIColor.lightGray,
         .paragraphStyle: paragraph
       ])
@@ -305,6 +369,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     content = nil
     lastText = nil
     cachedFrame = nil
+    coverTask?.cancel()
+    coverTask = nil
+    coverURL = ""
+    coverImage = nil
     lastFrameTime = -.infinity
     lastRenderError = nil
     log("stopped frames=\(frameCount)")
@@ -348,7 +416,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   func pictureInPictureControllerTimeRangeForPlayback(_ pictureInPictureController: AVPictureInPictureController) -> CMTimeRange {
-    CMTimeRange(start: .negativeInfinity, duration: .positiveInfinity)
+    CMTimeRange(start: .zero, duration: .positiveInfinity)
   }
 
   func pictureInPictureControllerIsPlaybackPaused(_ pictureInPictureController: AVPictureInPictureController) -> Bool {

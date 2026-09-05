@@ -1225,6 +1225,14 @@
       "label": "Inactive Opacity",
       "description": "Base opacity for non-active lines"
     },
+    "lyricPipDoubleLine": {
+      "label": "Two lyric lines",
+      "description": "Show the current and next lines. When romanization or translation is available, show it below the current line instead."
+    },
+    "lyricPipShowTranslation": {
+      "label": "Romanization and translation",
+      "description": "Show available romanization and translation below the current lyric. Turn off to show only original lyrics."
+    },
     "lyricPipEnabled": {
       "label": "Lyrics in Picture in Picture",
       "description": "Show lyrics in a movable, resizable system window. Play a song first. Closing the window keeps music playing."

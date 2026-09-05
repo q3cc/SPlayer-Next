@@ -1213,6 +1213,14 @@
       "label": "非激活行透明度",
       "description": "非当前行的基础透明度"
     },
+    "lyricPipDoubleLine": {
+      "label": "双行歌词",
+      "description": "显示当前句和下一句。出现音译或翻译时，只显示当前句及其音译、翻译。"
+    },
+    "lyricPipShowTranslation": {
+      "label": "显示音译和翻译",
+      "description": "在当前歌词下方显示已有的音译和翻译；关闭后仅显示原文。"
+    },
     "lyricPipEnabled": {
       "label": "开启歌词小窗",
       "description": "使用系统画中画显示歌词，可拖动和缩放。请先播放歌曲；关闭小窗不会停止音乐。"

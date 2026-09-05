@@ -52,8 +52,16 @@ const mobileExternalLyric: SettingCategory = {
     .map((section) => ({
       ...section,
       items: section.items
-        .filter((item) => item.key === "desktopLyricEnabled")
-        .map((item) => ({ ...item, key: "lyricPipEnabled" })),
+        .filter((item) =>
+          ["desktopLyricEnabled", "desktopLyricDoubleLine", "desktopLyricShowTranslation"].includes(
+            item.key,
+          ),
+        )
+        .map((item) => ({
+          ...item,
+          key: item.key.replace("desktopLyric", "lyricPip"),
+          ...(item.key === "desktopLyricDoubleLine" ? { defaultValue: false } : {}),
+        })),
     })),
 };
 
