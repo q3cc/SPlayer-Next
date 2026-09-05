@@ -1,5 +1,9 @@
 {
   "update": {
+    "iosInstallHint": "After download, choose your signing tool in the share sheet. The IPA still needs signing before installation.",
+    "iosReadyToast": "IPA downloaded. Open it in another app.",
+    "openInApp": "Open in another app",
+    "updateNow": "Update now",
     "dialogTitle": "New Version Available",
     "later": "Later",
     "download": "Download",
@@ -1725,7 +1729,8 @@
       "description": "Choose Stable, Beta preview, or Alpha experimental updates",
       "stable": "Stable",
       "beta": "Beta Preview",
-      "alpha": "Alpha Experimental"
+      "alpha": "Alpha Experimental",
+      "action": "Action Build"
     },
     "checkUpdate": {
       "label": "Check for Updates",

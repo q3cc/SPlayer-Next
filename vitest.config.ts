@@ -7,6 +7,8 @@ import pkg from "./package.json" with { type: "json" };
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __COMMIT_HASH__: JSON.stringify("1234567"),
+    __COMMIT_DATE__: JSON.stringify("2026-09-01T00:00:00Z"),
     __APP_REPO_URL__: JSON.stringify(pkg.repository.url),
     __APP_REPO_NAME__: JSON.stringify(pkg.productName),
     __APP_AUTHOR__: JSON.stringify(pkg.author.name),

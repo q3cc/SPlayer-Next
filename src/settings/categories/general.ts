@@ -94,10 +94,11 @@ const generalCategory: SettingCategory = {
             { value: "stable", labelKey: "settings.updateChannel.stable" },
             { value: "beta", labelKey: "settings.updateChannel.beta" },
             { value: "alpha", labelKey: "settings.updateChannel.alpha" },
+            ...(isIOS ? [{ value: "action", labelKey: "settings.updateChannel.action" }] : []),
           ],
           defaultValue: "stable",
           confirm: {
-            when: (next) => next === "beta" || next === "alpha",
+            when: (next) => next === "beta" || next === "alpha" || next === "action",
             titleKey: "settings.confirm.testChannelTitle",
             contentKey: "settings.confirm.testChannelContent",
             type: "warning",

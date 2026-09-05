@@ -163,7 +163,12 @@ export const downloadUpdate = (): void => {
 export const applyChannelChange = (previous: UpdateChannel, channel: UpdateChannel): void => {
   if (previous === channel) return;
   updaterLog.info(`切换更新通道: ${previous} -> ${channel}`);
-  const channelPriority: Record<UpdateChannel, number> = { stable: 0, beta: 1, alpha: 2 };
+  const channelPriority: Record<UpdateChannel, number> = {
+    stable: 0,
+    beta: 1,
+    alpha: 2,
+    action: 3,
+  };
   runCheck(true, channelPriority[channel] < channelPriority[previous]);
 };
 

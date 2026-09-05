@@ -3702,6 +3702,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-http",
+ "tauri-plugin-ipa-update",
  "tauri-plugin-lyric-pip",
  "tauri-plugin-opener",
  "tauri-plugin-os",
@@ -4125,6 +4126,14 @@ dependencies = [
  "tokio",
  "url",
  "urlpattern",
+]
+
+[[package]]
+name = "tauri-plugin-ipa-update"
+version = "0.1.0"
+dependencies = [
+ "tauri",
+ "tauri-plugin",
 ]
 
 [[package]]

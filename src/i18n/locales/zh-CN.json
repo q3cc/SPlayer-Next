@@ -1,5 +1,9 @@
 {
   "update": {
+    "iosInstallHint": "下载后会弹出分享面板，选择签名工具打开 IPA。仍需重新签名安装。",
+    "iosReadyToast": "IPA 已下载，可用其他 App 打开",
+    "openInApp": "其他 App 打开",
+    "updateNow": "立即更新",
     "dialogTitle": "发现新版本",
     "later": "稍后",
     "download": "下载",
@@ -1707,7 +1711,8 @@
       "description": "选择正式版、Beta 预览版或 Alpha 内测版更新",
       "stable": "正式版",
       "beta": "Beta 预览版",
-      "alpha": "Alpha 内测版"
+      "alpha": "Alpha 内测版",
+      "action": "Action 构建版"
     },
     "checkUpdate": {
       "label": "检查更新",

@@ -415,7 +415,7 @@ export interface WindowStates {
 }
 
 /** 应用更新通道 */
-export type UpdateChannel = "stable" | "beta" | "alpha";
+export type UpdateChannel = "stable" | "beta" | "alpha" | "action";
 
 /** 应用更新配置 */
 export interface AppUpdateSettings {

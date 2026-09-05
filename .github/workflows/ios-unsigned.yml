@@ -11,6 +11,8 @@ on:
       - "src/**"
       - "electron/main/apis/**"
       - "scripts/ios-layout-tests/**"
+      - "scripts/ios-update-tests/**"
+      - "scripts/publish-action-update.cjs"
       - "src-tauri/**"
       - "shared/**"
       - "public/**"
@@ -81,6 +83,10 @@ jobs:
 
       - name: Generate the Xcode project
         run: pnpm tauri ios init --ci --skip-targets-install
+
+      - name: Test native IPA range downloader
+        if: matrix.kind == 'ipa'
+        run: python3 scripts/ios-update-tests/test_download.py
 
       - name: Install the SPlayer iOS icon set
         shell: bash
@@ -316,3 +322,25 @@ jobs:
           path: ios-smoke
           if-no-files-found: warn
           retention-days: 7
+
+  publish-action:
+    name: Publish Action update channel
+    needs: build-ios
+    if: github.repository == 'q3cc/SPlayer-Next-ios' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: publish-ios-action-channel
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: SPlayer-Next-iOS-unsigned-${{ github.sha }}
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const publish = require('./scripts/publish-action-update.cjs');
+            await publish({ github, context });

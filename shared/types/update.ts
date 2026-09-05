@@ -19,7 +19,13 @@ export type UpdateEvent =
   | { type: "checking" }
   | { type: "available"; meta: UpdateMeta; manual: boolean; canInstall: boolean }
   | { type: "notAvailable"; manual: boolean }
-  | { type: "progress"; percent: number }
+  | {
+      type: "progress";
+      percent: number;
+      bytesPerSecond?: number;
+      downloadedBytes?: number;
+      totalBytes?: number;
+    }
   | { type: "downloaded"; meta: UpdateMeta }
   | { type: "error"; message: string; manual: boolean };
 

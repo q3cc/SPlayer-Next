@@ -1,6 +1,7 @@
 import type { UpdateEvent, UpdateMeta, UpdatePhase } from "@shared/types/update";
 import { toast } from "@/composables/useToast";
 import i18n from "@/i18n";
+import { isIOS } from "@/utils/config";
 
 const { t } = i18n.global;
 
@@ -11,6 +12,9 @@ export const useUpdateStore = defineStore("update", () => {
   const meta = ref<UpdateMeta | null>(null);
   /** 下载进度 0–100 */
   const percent = ref(0);
+  const bytesPerSecond = ref(0);
+  const downloadedBytes = ref(0);
+  const totalBytes = ref(0);
   /** 当前平台是否支持应用内安装 */
   const canInstall = ref(true);
   /** 更新弹窗开关 */
@@ -40,11 +44,14 @@ export const useUpdateStore = defineStore("update", () => {
       case "progress":
         phase.value = "downloading";
         percent.value = event.percent;
+        bytesPerSecond.value = event.bytesPerSecond ?? 0;
+        downloadedBytes.value = event.downloadedBytes ?? 0;
+        totalBytes.value = event.totalBytes ?? 0;
         break;
       case "downloaded":
         phase.value = "downloaded";
         meta.value = event.meta;
-        toast.success(t("update.readyToast"));
+        toast.success(t(isIOS ? "update.iosReadyToast" : "update.readyToast"));
         break;
       case "error":
         phase.value = "error";
@@ -61,6 +68,10 @@ export const useUpdateStore = defineStore("update", () => {
 
   /** 手动检查更新 */
   const checkManually = (): void => {
+    if (phase.value === "downloading") {
+      dialogOpen.value = true;
+      return;
+    }
     phase.value = "checking";
     void window.api.update.check(true);
   };
@@ -69,6 +80,9 @@ export const useUpdateStore = defineStore("update", () => {
   const download = (): void => {
     phase.value = "downloading";
     percent.value = 0;
+    bytesPerSecond.value = 0;
+    downloadedBytes.value = 0;
+    totalBytes.value = meta.value?.size ?? 0;
     void window.api.update.download();
   };
 
@@ -87,6 +101,9 @@ export const useUpdateStore = defineStore("update", () => {
     phase,
     meta,
     percent,
+    bytesPerSecond,
+    downloadedBytes,
+    totalBytes,
     canInstall,
     dialogOpen,
     hasUpdate,

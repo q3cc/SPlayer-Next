@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { marked } from "marked";
 import { useUpdateStore } from "@/stores/update";
-import { APP_VERSION, IS_APPX } from "@/utils/config";
+import { APP_VERSION, IS_APPX, isIOS } from "@/utils/config";
 import { formatFileSize } from "@/utils/format";
 
 const { t } = useI18n();
@@ -54,10 +54,40 @@ const releaseDateText = computed(() => {
         v-if="notesHtml"
         class="overflow-hidden rounded-xl border border-solid border-primary/10 bg-on-surface/4"
       >
+        <div v-if="isIOS" class="max-h-80 overflow-y-auto whitespace-pre-wrap px-4 py-3 text-sm">
+          {{ update.meta?.releaseNotes }}
+        </div>
         <!-- eslint-disable vue/no-v-html -->
-        <div class="markdown-body max-h-80 overflow-y-auto px-4 py-3" v-html="notesHtml" />
+        <div v-else class="markdown-body max-h-80 overflow-y-auto px-4 py-3" v-html="notesHtml" />
         <!-- eslint-enable vue/no-v-html -->
       </div>
+      <div
+        v-if="isIOS && update.phase === 'downloading'"
+        class="flex flex-col gap-2"
+        aria-live="polite"
+      >
+        <div class="flex justify-between text-sm tabular-nums">
+          <span>{{ formatFileSize(update.bytesPerSecond) }}/s</span>
+          <span>{{ update.percent.toFixed(1) }}%</span>
+        </div>
+        <div
+          role="progressbar"
+          :aria-label="t('update.downloading')"
+          :aria-valuenow="update.percent"
+          :aria-valuemin="0"
+          :aria-valuemax="100"
+          class="h-2 overflow-hidden rounded-full bg-on-surface/10"
+        >
+          <div
+            class="h-full rounded-full bg-primary transition-[width]"
+            :style="{ width: `${update.percent}%` }"
+          />
+        </div>
+        <span class="text-xs text-on-surface-variant">
+          {{ formatFileSize(update.downloadedBytes) }} / {{ formatFileSize(update.totalBytes) }}
+        </span>
+      </div>
+      <p v-if="isIOS" class="text-sm text-on-surface-variant">{{ t("update.iosInstallHint") }}</p>
     </div>
 
     <template #footer="{ close }">
@@ -73,13 +103,13 @@ const releaseDateText = computed(() => {
           {{ t("update.goDownload") }}
         </SButton>
         <SButton v-if="update.phase === 'downloaded'" type="primary" @click="update.install()">
-          {{ t("update.installNow") }}
+          {{ t(isIOS ? "update.openInApp" : "update.installNow") }}
         </SButton>
         <SButton v-else-if="update.phase === 'downloading'" type="primary" disabled>
-          {{ t("update.downloading") }} {{ update.percent }}%
+          {{ t("update.downloading") }} {{ update.percent.toFixed(1) }}%
         </SButton>
         <SButton v-else type="primary" @click="update.download()">
-          {{ t("update.download") }}
+          {{ t(isIOS ? "update.updateNow" : "update.download") }}
         </SButton>
       </template>
       <SButton

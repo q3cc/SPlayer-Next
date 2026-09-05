@@ -1,0 +1,3 @@
+[default]
+description = "下载本仓库 IPA 并通过系统分享面板打开"
+permissions = ["allow-download", "allow-share", "allow-register-listener", "allow-remove-listener"]

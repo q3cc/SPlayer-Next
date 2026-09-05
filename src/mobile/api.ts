@@ -3,7 +3,6 @@ import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { readTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { defaultHotkeyConfig } from "@shared/defaults/hotkeys";
 import type { DownloadProgress, DownloadRequest, DownloadTask } from "@shared/types/download";
 import type { HotkeyConfig } from "@shared/types/hotkey";
@@ -21,6 +20,7 @@ import { mobileProviders } from "./providers";
 import { mobileStats } from "./stats";
 import { mobileMediaSession } from "./mediaSession";
 import { mobileLyricPip } from "./lyricPip";
+import { mobileUpdate } from "./update";
 
 let playerPromise: Promise<PlayerApi> | undefined;
 const playerEventListeners = new Set<(event: PlayerEvent) => void>();
@@ -554,13 +554,7 @@ const api = {
     remove: async () => ({ models: [], activeModelId: null }),
     setActive: async () => ({ models: [], activeModelId: null }),
   },
-  update: {
-    check: async () => undefined,
-    download: async () => undefined,
-    install: async () => undefined,
-    openDownloadPage: async () => openUrl(`${__APP_REPO_URL__}/releases`),
-    onEvent: unsubscribe,
-  },
+  update: mobileUpdate,
   stats: mobileStats,
   hotkey: {
     getAll: async () => hotkeys,
