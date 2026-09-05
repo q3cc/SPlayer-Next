@@ -48,6 +48,11 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var frameCount = 0
   private var lastRenderError: String?
 
+  private var displayReadiness: String {
+    if #available(iOS 17.4, *) { return String(displayLayer.isReadyForDisplay) }
+    return "unavailable-before-ios-17.4"
+  }
+
   @objc public func status(_ invoke: Invoke) {
     invoke.resolve(["active": controller?.isPictureInPictureActive ?? false])
   }
@@ -217,7 +222,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     lastFrameTime = now
     frameCount += 1
     if frameCount == 1 || frameCount % 30 == 0 {
-      log("frames=\(frameCount) status=\(displayLayer.status.rawValue) ready=\(displayLayer.isReadyForDisplay) surface=\(CVPixelBufferGetIOSurface(buffer) != nil) bytes=\(CVPixelBufferGetDataSize(buffer))")
+      log("frames=\(frameCount) status=\(displayLayer.status.rawValue) ready=\(displayReadiness) surface=\(CVPixelBufferGetIOSurface(buffer) != nil) bytes=\(CVPixelBufferGetDataSize(buffer))")
     }
   }
 
@@ -319,7 +324,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     pendingStart?.resolve()
     pendingStart = nil
     trigger("visibility", data: ["active": true])
-    log("started ready=\(displayLayer.isReadyForDisplay)")
+    log("started ready=\(displayReadiness)")
     render(force: true)
     updateTimer()
   }
