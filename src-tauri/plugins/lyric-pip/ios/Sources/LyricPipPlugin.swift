@@ -59,6 +59,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var coverURL = ""
   private var coverTask: URLSessionDataTask?
   private var coverImage: UIImage?
+  private var discAngle = 0.0
+  private var discAnchorTime = ProcessInfo.processInfo.systemUptime
 
   private var displayReadiness: String {
     if #available(iOS 17.4, *) { return String(displayLayer.isReadyForDisplay) }
@@ -111,6 +113,12 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     DispatchQueue.main.async {
       let delay = max(0, Date().timeIntervalSince1970 * 1000 - next.timestamp)
       let playbackChanged = self.playing != next.playing || self.duration != next.duration
+      let now = ProcessInfo.processInfo.systemUptime
+      if self.playing {
+        self.discAngle = (self.discAngle + (now - self.discAnchorTime) * .pi / 10)
+          .truncatingRemainder(dividingBy: 2 * .pi)
+      }
+      self.discAnchorTime = now
       self.position = next.position + (next.playing ? delay * next.speed : 0)
       self.duration = next.duration
       self.playing = next.playing
@@ -205,7 +213,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
   }
 
-  /// 在下一句、当前句保留期结束或一秒保活时唤醒，避免固定每秒五次扫描歌词。
+  /// 有封面且播放时以十帧旋转；暂停或无封面时恢复换句与一秒保活调度。
   private func updateTimer() {
     timer?.invalidate()
     timer = nil
@@ -214,6 +222,9 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
     let now = ProcessInfo.processInfo.systemUptime
     var delay = max(0.2, 1 - (now - lastFrameTime))
+    if playing && coverImage != nil {
+      delay = max(0.02, 0.1 - (now - lastFrameTime))
+    }
     if playing && speed > 0, let content = content {
       let time = currentPosition() + content.offset
       if let next = content.lines.first(where: { $0.start > time }) {
@@ -254,8 +265,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let info = [title, content?.artist ?? ""].filter { !$0.isEmpty }.joined(separator: " - ")
     let text = active?.rows ?? [title, info]
     let primary = active?.primary ?? 0
-    if text != lastText || primary != lastPrimary || cachedFrame == nil {
-      guard let buffer = drawFrame(text, primary: primary) else { return }
+    let animateDisc = playing && coverImage != nil && now - lastFrameTime >= 0.095
+    if text != lastText || primary != lastPrimary || cachedFrame == nil || animateDisc {
+      let angle = discAngle + (playing ? (now - discAnchorTime) * .pi / 10 : 0)
+      guard let buffer = drawFrame(text, primary: primary, angle: CGFloat(angle)) else { return }
       cachedFrame = buffer
       lastText = text
       lastPrimary = primary
@@ -295,7 +308,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   /// 使用可共享的 IOSurface，并在送往系统显示层之前结束 CPU 写入锁。
-  private func drawFrame(_ text: [String], primary: Int) -> CVPixelBuffer? {
+  private func drawFrame(_ text: [String], primary: Int, angle: CGFloat) -> CVPixelBuffer? {
     var pixelBuffer: CVPixelBuffer?
     let attributes: [CFString: Any] = [
       kCVPixelBufferCGImageCompatibilityKey: true,
@@ -332,6 +345,9 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     context.setFillColor(UIColor(white: 0.04, alpha: 1).cgColor)
     context.fillEllipse(in: disc)
     context.saveGState()
+    context.translateBy(x: disc.midX, y: disc.midY)
+    context.rotate(by: angle)
+    context.translateBy(x: -disc.midX, y: -disc.midY)
     let coverRect = disc.insetBy(dx: 16, dy: 16)
     context.addEllipse(in: coverRect)
     context.clip()
@@ -400,6 +416,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     coverTask = nil
     coverURL = ""
     coverImage = nil
+    discAngle = 0
+    discAnchorTime = ProcessInfo.processInfo.systemUptime
     lastFrameTime = -.infinity
     lastRenderError = nil
     log("stopped frames=\(frameCount)")
