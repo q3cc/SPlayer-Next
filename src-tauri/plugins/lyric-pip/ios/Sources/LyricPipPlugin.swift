@@ -149,10 +149,10 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       let pip = AVPictureInPictureController(contentSource: source)
       pip.delegate = self
       pip.requiresLinearPlayback = true
-      // 系统没有公开的隐藏控件接口；仅在支持此 setter 的侧载系统上启用。
+      // 隐藏播放控件但保留关闭和返回；未公开接口需先确认 setter 可用。
       if pip.responds(to: NSSelectorFromString("setControlsStyle:")) {
-        pip.setValue(2, forKey: "controlsStyle")
-        self.log("controls-style=hidden")
+        pip.setValue(1, forKey: "controlsStyle")
+        self.log("controls-style=playback-hidden")
       } else {
         self.log("controls-style=system (hidden style unavailable)")
       }
