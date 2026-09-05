@@ -1,9 +1,19 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { diagnosticText } from "./diagnostics";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 describe("临时诊断日志脱敏", () => {
+  it("日志位于共享文稿目录，文件共享配置同时开启", () => {
+    const native = readFileSync("src-tauri/src/diagnostics.rs", "utf8");
+    const plist = readFileSync("src-tauri/Info.ios.plist", "utf8");
+    expect(native).toContain('.join("Documents/logs")');
+    for (const key of ["UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"]) {
+      expect(plist).toMatch(new RegExp(`<key>${key}</key>\\s*<true\\s*/>`));
+    }
+  });
+
   it("保留登录状态与凭据存在标志，隐藏对象中的凭据值", () => {
     const output = diagnosticText({
       code: 803,

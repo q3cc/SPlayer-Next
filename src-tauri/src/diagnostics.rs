@@ -16,7 +16,7 @@ static SESSION_LOG: OnceLock<SessionLog> = OnceLock::new();
 pub fn init() -> Result<(), String> {
     #[cfg(target_os = "ios")]
     let directory = PathBuf::from(std::env::var_os("HOME").ok_or("iOS sandbox HOME missing")?)
-        .join("Library/logs");
+        .join("Documents/logs");
     #[cfg(not(target_os = "ios"))]
     let directory = std::env::temp_dir().join("splayer-logs");
     std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;

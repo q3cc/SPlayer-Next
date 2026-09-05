@@ -103,6 +103,12 @@ jobs:
             exit 1
           fi
           cp "$ipa_path" SPlayer-Next-iOS-unsigned.ipa
+          # 验证最终安装包确实开放文稿共享，不启动模拟器。
+          inspect_dir="$(mktemp -d)"
+          unzip -q "$ipa_path" 'Payload/*.app/Info.plist' -d "$inspect_dir"
+          info_path="$(find "$inspect_dir/Payload" -name Info.plist -print -quit)"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :UIFileSharingEnabled' "$info_path")" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LSSupportsOpeningDocumentsInPlace' "$info_path")" = true
 
       - name: Upload unsigned IPA
         if: matrix.kind == 'ipa'
