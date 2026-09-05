@@ -9,6 +9,8 @@ export default defineConfig(
   globalIgnores([
     "**/node_modules/",
     "**/dist/",
+    "dist-mobile/",
+    "src-tauri/vendor/",
     "**/out/",
     "**/target/",
     "**/build/",
