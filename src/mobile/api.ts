@@ -18,6 +18,7 @@ import { mobileLyrics } from "./lyrics";
 import { mobilePlaylist } from "./playlist";
 import { mobileProviders } from "./providers";
 import { mobileStats } from "./stats";
+import { mobileMediaSession } from "./mediaSession";
 
 let playerPromise: Promise<PlayerApi> | undefined;
 const playerEventListeners = new Set<(event: PlayerEvent) => void>();
@@ -234,10 +235,19 @@ let hotkeys: HotkeyConfig = structuredClone(defaultHotkeyConfig);
 const api = {
   config: {
     get: async (key: string) => store.get(key as never),
-    set: async (key: string, value: unknown) => store.set(key, value),
+    set: async (key: string, value: unknown) => {
+      store.set(key, value);
+      if (key.startsWith("media.")) mobileMediaSession.refresh();
+    },
     getAll: async () => store.store,
-    reset: async () => store.clear(),
-    replaceAll: async (value: unknown) => store.replaceAll(value),
+    reset: async () => {
+      store.clear();
+      mobileMediaSession.refresh();
+    },
+    replaceAll: async (value: unknown) => {
+      store.replaceAll(value);
+      mobileMediaSession.refresh();
+    },
     exportToFile: async (value: unknown) => {
       const path = await save({ defaultPath: "splayer-settings.json" });
       if (!path) return { ok: false, reason: "canceled" as const };
@@ -439,12 +449,17 @@ const api = {
     update: (value: NowPlayingUpdatePayload) => {
       const changed = value.track?.id !== nowPlaying.track?.id;
       nowPlaying = value;
+      mobileMediaSession.setLyrics(
+        value,
+        value.track ? (lyricOffsets.get(value.track.id) ?? 0) : 0,
+      );
       if (changed) trackListeners.forEach((listener) => listener({ track: value.track }));
       void snapshot().then((value) => lyricListeners.forEach((listener) => listener(value)));
     },
     requestSnapshot: snapshot,
     setLyricOffset: (id: string, offset: number) => {
       lyricOffsets.set(id, offset);
+      mobileMediaSession.setOffset(id, offset);
       offsetListeners.forEach((listener) => listener({ trackId: id, offsetMs: offset }));
     },
     onTrackChange: (callback: (value: { track: Track | null }) => void) => {

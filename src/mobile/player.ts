@@ -10,6 +10,7 @@ import type {
   PlayerStatus,
 } from "@shared/types/player";
 import { resolveMobileAudioSource } from "./library";
+import { mobileMediaSession } from "./mediaSession";
 
 type PlayerListener = (event: PlayerEvent) => void;
 
@@ -49,6 +50,7 @@ audio.addEventListener("pause", () => {
   emit({ type: "status", data: status() });
 });
 audio.addEventListener("timeupdate", () => {
+  mobileMediaSession.setPosition(positionMs());
   emit({ type: "position", data: { position: positionMs(), duration: durationMs() } });
   if ("mediaSession" in navigator && durationMs() > 0) {
     try {
@@ -120,6 +122,7 @@ const load = async (
   try {
     state = "loading";
     currentMeta = options.meta;
+    mobileMediaSession.setTrack(currentMeta ?? null);
     audio.pause();
     audio.src = resolveMobileAudioSource(source);
     audio.load();
@@ -134,14 +137,6 @@ const load = async (
       bitRate: 0,
       codec,
     };
-    if ("mediaSession" in navigator && currentMeta) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentMeta.title,
-        artist: currentMeta.artists.map((artist) => artist.name).join(" / "),
-        album: currentMeta.album?.name,
-        artwork: currentMeta.cover ? [{ src: currentMeta.cover }] : [],
-      });
-    }
     state = options.autoPlay === false ? "paused" : "playing";
     if (options.autoPlay !== false) await audio.play();
     return {
@@ -160,6 +155,7 @@ const load = async (
     };
   } catch (error) {
     state = "idle";
+    mobileMediaSession.setTrack(null);
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 };
@@ -188,10 +184,12 @@ export const mobilePlayer: PlayerApi = {
     audio.pause();
     audio.currentTime = 0;
     state = "stopped";
+    mobileMediaSession.setPosition(0);
     return ok();
   },
   seek: async (position) => {
     audio.currentTime = Math.max(0, position / 1000);
+    mobileMediaSession.setPosition(positionMs());
     emit({ type: "position", data: { position, duration: durationMs() } });
     return ok();
   },

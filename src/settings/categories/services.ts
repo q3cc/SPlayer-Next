@@ -2,6 +2,7 @@ import type { SettingCategory } from "@/types/settings-schema";
 import { useSettingsStore } from "@/stores/settings";
 import { toast } from "@/composables/useToast";
 import i18n from "@/i18n";
+import { isIOS } from "@/utils/config";
 import ExternalApiStatusCard from "@/components/settings/custom/ExternalApiStatusCard.vue";
 import LastfmPanel from "@/components/settings/custom/LastfmPanel.vue";
 import IconLucideGlobe from "~icons/lucide/globe";
@@ -78,6 +79,14 @@ const servicesCategory: SettingCategory = {
           type: "switch",
           binding: { store: "settings", path: "system.media.systemMediaControls" },
           defaultValue: true,
+        },
+        {
+          key: "dynamicLyrics",
+          type: "switch",
+          binding: { store: "settings", path: "system.media.dynamicLyrics" },
+          defaultValue: false,
+          visible: () => isIOS,
+          disabled: () => !useSettingsStore().system.media.systemMediaControls,
         },
       ],
     },

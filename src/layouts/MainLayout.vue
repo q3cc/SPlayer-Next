@@ -114,7 +114,7 @@ const playerBarInnerClass = computed(() => {
     case "floating":
       return `${base} mx-auto max-w-4xl glass-panel rounded-full shadow-xl border border-solid border-primary/10`;
     default:
-      return `${base} h-20 bg-surface-panel border-t border-t-solid border-t-primary/10`;
+      return `${base} ${isIOS ? "ios-player-bar" : "h-20"} bg-surface-panel border-t border-t-solid border-t-primary/10`;
   }
 });
 </script>
@@ -131,7 +131,7 @@ const playerBarInnerClass = computed(() => {
     <!-- 侧边栏 -->
     <aside
       v-if="!isCompactLayout"
-      class="shrink-0 bg-surface-panel overflow-y-auto z-10 transition-[width,margin] duration-300"
+      class="desktop-sidebar shrink-0 bg-surface-panel overflow-y-auto z-10 transition-[width,margin] duration-300"
       :class="[appearance.sidebarCollapsed ? 'w-16' : 'w-60', sidebarClass]"
     >
       <SideBar />
@@ -139,7 +139,7 @@ const playerBarInnerClass = computed(() => {
 
     <!-- 右侧主区域 -->
     <div
-      class="flex-1 flex flex-col min-w-0"
+      class="main-shell flex-1 flex flex-col min-w-0"
       :class="[
         mainMarginClass,
         isCompactLayout ? 'mobile-main-shell' : '',
@@ -177,7 +177,11 @@ const playerBarInnerClass = computed(() => {
     <div
       v-if="showPlayerBar"
       :class="playerBarWrapperClass"
-      :style="isIOS && !isCompactLayout ? { bottom: 'var(--s-safe-bottom)' } : undefined"
+      :style="
+        isIOS && !isCompactLayout && appearance.layoutMode === 'floating'
+          ? { bottom: 'var(--s-safe-bottom)' }
+          : undefined
+      "
     >
       <footer :class="playerBarInnerClass">
         <PlayerBar />
@@ -209,24 +213,42 @@ const playerBarInnerClass = computed(() => {
   height: 100dvh;
 }
 
-.ios-app-viewport {
+.ios-app-viewport .desktop-sidebar {
   padding-top: var(--s-safe-top);
-  padding-right: var(--s-safe-right);
   padding-bottom: var(--s-safe-bottom);
   padding-left: var(--s-safe-left);
 }
 
+.ios-app-viewport .main-header {
+  height: calc(4rem + var(--s-safe-top));
+  padding-top: var(--s-safe-top);
+}
+
 .ios-app-viewport .mobile-header {
-  height: 3.5rem;
-  padding-top: 0;
+  height: calc(3.5rem + var(--s-safe-top));
+}
+
+.ios-app-viewport .main-shell {
+  padding-right: var(--s-safe-right);
+}
+
+.ios-app-viewport .main-shell:not(.mobile-main-shell) > main {
+  padding-bottom: var(--s-safe-bottom);
 }
 
 .ios-app-viewport .mobile-main-shell {
-  padding-bottom: 4rem;
+  padding-left: var(--s-safe-left);
 }
 
-.ios-app-viewport .mobile-main-shell.has-player {
-  padding-bottom: 8.5rem;
+.ios-app-viewport .mb-20 {
+  margin-bottom: calc(5rem + var(--s-safe-bottom));
+}
+
+.ios-player-bar {
+  height: calc(5rem + var(--s-safe-bottom));
+  padding-right: var(--s-safe-right);
+  padding-bottom: var(--s-safe-bottom);
+  padding-left: var(--s-safe-left);
 }
 
 .mobile-header {
@@ -243,12 +265,14 @@ const playerBarInnerClass = computed(() => {
 }
 
 .mobile-player-wrapper {
-  right: var(--s-safe-right);
+  right: 0;
   bottom: calc(4rem + var(--s-safe-bottom));
-  left: var(--s-safe-left);
+  left: 0;
 }
 
 .mobile-player-inner {
   height: 4.5rem;
+  padding-right: var(--s-safe-right);
+  padding-left: var(--s-safe-left);
 }
 </style>

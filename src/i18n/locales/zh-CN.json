@@ -1591,6 +1591,10 @@
       "label": "系统媒体控制",
       "description": "在系统媒体控制中显示当前播放信息"
     },
+    "dynamicLyrics": {
+      "label": "动态歌词",
+      "description": "在锁屏和控制中心以当前歌词作为标题，副标题显示“歌曲名 - 歌手”；无歌词时恢复歌曲信息"
+    },
     "discordEnabled": {
       "label": "Discord 状态",
       "description": "在 Discord 中显示当前播放状态"

@@ -87,6 +87,8 @@ export interface LastfmSettings {
 export interface MediaSettings {
   /** 是否启用系统媒体控件（SMTC / MPRIS / MPNowPlaying） */
   systemMediaControls: boolean;
+  /** 使用当前歌词作为系统正在播放标题 */
+  dynamicLyrics: boolean;
   /** Discord RPC 配置 */
   discord: DiscordSettings;
 }

@@ -1603,6 +1603,10 @@
       "label": "System Media Controls",
       "description": "Show playback info in system media controls"
     },
+    "dynamicLyrics": {
+      "label": "Dynamic Lyrics",
+      "description": "Show the current lyric as the Lock Screen and Control Center title, with “Song - Artist” below; restore song info when no lyric is active"
+    },
     "discordEnabled": {
       "label": "Discord Status",
       "description": "Show playback status on Discord"

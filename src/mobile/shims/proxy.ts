@@ -39,7 +39,12 @@ export const fetchWithProxy = (
 ): Promise<Response> => {
   if (isApplicationAsset(input)) return webFetch(input, init);
   const proxy = getNetworkProxyUrl();
-  return tauriFetch(input, proxy ? { ...init, proxy: { all: proxy } } : init);
+  // 原生 API 请求保留公共实现指定的 Cookie/Referer/Origin；未指定 Origin 时不注入应用协议地址。
+  const headers = new Headers(
+    init?.headers ?? (input instanceof Request ? input.headers : undefined),
+  );
+  if (!headers.has("Origin")) headers.set("Origin", "");
+  return tauriFetch(input, { ...init, headers, ...(proxy ? { proxy: { all: proxy } } : {}) });
 };
 
 export const testNetworkProxy = async (): Promise<boolean> => {

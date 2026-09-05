@@ -119,6 +119,7 @@ const testHomeRecommendationsVisible = async (): Promise<void> => {
       folderButton.onclick = async () => {
         const result = await useLibraryStore().addScanDir();
         if (result.success || result.error === "canceled") {
+          folderButton.textContent = "Folder picker closed";
           reportBootStage("folder-picker-returned");
         } else {
           folderButton.textContent = `Folder picker failed: ${result.error}`;
@@ -182,8 +183,46 @@ const testLibraryScan = async (): Promise<void> => {
     }
     const loaded = await window.api.player.load(`file://${await join(directory, "smoke.wav")}`, {
       autoPlay: false,
+      meta: tracks[0],
     });
     if (!loaded.success) throw new Error(`local audio load: ${loaded.error}`);
+    const dynamicLyrics = await window.api.config.get("media.dynamicLyrics");
+    const mediaControls = await window.api.config.get("media.systemMediaControls");
+    try {
+      await window.api.config.set("media.systemMediaControls", true);
+      await window.api.config.set("media.dynamicLyrics", true);
+      window.api.nowPlaying.update({
+        track: tracks[0],
+        source: null,
+        lyric: [
+          {
+            startTime: 100,
+            endTime: 1000,
+            words: [{ word: "测试动态歌词", startTime: 100, endTime: 1000 }],
+            translatedLyric: "",
+            romanLyric: "",
+            isBG: false,
+            isDuet: false,
+          },
+        ],
+      });
+      await window.api.player.seek(500);
+      if (
+        navigator.mediaSession.metadata?.title !== "测试动态歌词" ||
+        navigator.mediaSession.metadata?.artist !== "smoke - Unknown Artist"
+      ) {
+        throw new Error("dynamic lyrics media metadata did not update");
+      }
+      await window.api.config.set("media.dynamicLyrics", false);
+      if (String(navigator.mediaSession.metadata?.title) !== "smoke") {
+        throw new Error("disabling dynamic lyrics did not restore song title");
+      }
+      reportBootStage("dynamic-lyrics-ready");
+    } finally {
+      await window.api.config.set("media.dynamicLyrics", dynamicLyrics);
+      await window.api.config.set("media.systemMediaControls", mediaControls);
+      window.api.nowPlaying.update({ track: null, lyric: [], source: null });
+    }
     await window.api.player.stop();
   } finally {
     await remove(directory, { recursive: true }).catch(() => undefined);

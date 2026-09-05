@@ -30,6 +30,7 @@ export const defaultSystemConfig: SystemConfig = {
   },
   media: {
     systemMediaControls: true,
+    dynamicLyrics: false,
     discord: {
       enabled: false,
       showWhenPaused: false,

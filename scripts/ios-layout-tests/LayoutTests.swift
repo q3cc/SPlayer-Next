@@ -48,5 +48,6 @@ final class LayoutTests: XCTestCase {
         pickerAttachment.lifetime = .keepAlways
         add(pickerAttachment)
         cancel.tap()
+        XCTAssertTrue(app.buttons["Folder picker closed"].waitForExistence(timeout: 10))
     }
 }
