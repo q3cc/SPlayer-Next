@@ -25,8 +25,9 @@ final class IpaUpdatePlugin: Plugin {
       let task = IpaDownload(url: url, size: request.size, digest: request.digest, directory: folder,
         progress: { received, total, speed in
           DispatchQueue.main.async {
-            self.trigger("progress", data: ["percent": Double(received) / Double(total) * 100,
-              "downloadedBytes": received, "totalBytes": total, "bytesPerSecond": speed])
+            let event: JSObject = ["percent": Double(received) / Double(total) * 100,
+              "downloadedBytes": Double(received), "totalBytes": Double(total), "bytesPerSecond": speed]
+            self.trigger("progress", data: event)
           }
         }, completion: { result in
           if case .success = result {
@@ -58,7 +59,7 @@ final class IpaUpdatePlugin: Plugin {
         invoke.reject("请先下载 IPA"); return
       }
       guard UIApplication.shared.applicationState == .active,
-            var presenter = self.webView?.window?.rootViewController else {
+            var presenter = self.manager.viewController else {
         invoke.reject("请返回 App 后选择其他 App 打开"); return
       }
       while let next = presenter.presentedViewController { presenter = next }
