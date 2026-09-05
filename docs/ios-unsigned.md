@@ -6,7 +6,7 @@
 
 1. 打开仓库的 **Actions** 页面。
 2. 选择 **Build unsigned iOS IPA**。
-3. 点击 **Run workflow**，或等待 `feat/ios-ipados` 分支推送后自动构建。
+3. 点击 **Run workflow**，或等待 `main` / `feat/ios-ipados` 分支的相关文件推送后自动构建。
 4. 在成功的运行页面下载 `SPlayer-Next-iOS-unsigned-<commit>` artifact。
 
 该 IPA 不含 Apple 签名，不能直接从系统文件应用安装。实机测试前需使用个人或开发者证书重新签名；iPhone 和 iPad 的最低系统版本为 iOS/iPadOS 16。

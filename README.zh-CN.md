@@ -2,109 +2,78 @@
 
 <img alt="SPlayer-Next logo" width="120" height="120" src="public/icons/favicon.png" />
 
-<h2>SPlayer-Next</h2>
+<h1>SPlayer Next · iOS / iPadOS</h1>
 
-<p>🎵 跨平台音乐播放器，支持丰富的歌词展现形式与广泛的音频格式</p>
+<p>让 SPlayer Next 在 iPhone 和 iPad 上运行。</p>
 
-<p>「<a href="https://github.com/SPlayer-Dev/SPlayer">SPlayer</a>」的继任版本</p>
-
-[![Stars](https://img.shields.io/github/stars/SPlayer-Dev/SPlayer-Next?style=flat)](https://github.com/SPlayer-Dev/SPlayer-Next/stargazers)
-[![Release](https://img.shields.io/github/v/release/SPlayer-Dev/SPlayer-Next)](https://github.com/SPlayer-Dev/SPlayer-Next/releases)
-[![License](https://img.shields.io/github/license/SPlayer-Dev/SPlayer-Next)](https://github.com/SPlayer-Dev/SPlayer-Next/blob/main/LICENSE)
-[![Issues](https://img.shields.io/github/issues/SPlayer-Dev/SPlayer-Next)](https://github.com/SPlayer-Dev/SPlayer-Next/issues)
-
-[English](./README.md) | **简体中文**
+[下载 IPA](https://github.com/q3cc/SPlayer-Next/releases) · [构建记录](https://github.com/q3cc/SPlayer-Next/actions/workflows/ios-unsigned.yml) · [反馈问题](https://github.com/q3cc/SPlayer-Next/issues) · [原项目](https://github.com/SPlayer-Dev/SPlayer-Next)
 
 </div>
 
----
+## 这个仓库做什么
 
-## 功能特性
+这是 [SPlayer-Dev/SPlayer-Next](https://github.com/SPlayer-Dev/SPlayer-Next) 的 iOS / iPadOS 适配分支，由 q3cc 维护。原播放器、界面和大部分业务代码来自上游；这个仓库主要处理移动端运行、系统接口和屏幕适配。
 
-- 🎵 **广泛的格式支持** —— MP3、FLAC、WAV、AAC、OGG、APE 等，基于 FFmpeg 解码
-- 📝 **丰富的歌词** —— LRC / QRC / YRC / TTML，逐字高亮与翻译，支持桌面、灵动岛、任务栏歌词窗口
-- 🌐 **流媒体服务** —— Subsonic / Navidrome / Jellyfin / Emby（多服务器、自动连接）
-- 🖥️ **跨平台** —— Windows / macOS / Linux，以及实验性 iOS / iPadOS 客户端
-- 🎚️ **音乐频谱** —— 实时 FFT 可视化
-- 🏷️ **元信息编辑** —— 编辑本地曲目标签与封面
-- ⬇️ **下载** —— 内置下载管理器
-- 🎧 **系统媒体集成** —— Windows SMTC / Linux MPRIS / macOS Now Playing + Discord RPC
-- ⚡ **高性能音频引擎** —— FFmpeg + Rust
-- 🎨 **自适应主题** —— 基于封面取色，Light / Dark / Auto
-- 📈 **Last.fm Scrobble**
+客户端使用 Tauri 打包，复用原项目的 Vue 界面、音乐平台接口和歌词逻辑。iOS 播放使用系统 WebView 的音频能力，格式兼容性与桌面版的 FFmpeg 音频引擎不同。
 
-## 开发
+目前提供预览版，适合愿意自行签名安装、协助实机测试的用户。Windows、macOS、Linux 桌面版请前往[原项目](https://github.com/SPlayer-Dev/SPlayer-Next)。
 
-### 环境要求
+## 下载与安装
 
-- **Node.js** >= 22
-- **pnpm** >= 10
-- **Rust 工具链**（构建原生模块所需，见下）
+要求 iOS / iPadOS 16 或更高版本。
 
-### 原生模块
+1. 在 [Releases](https://github.com/q3cc/SPlayer-Next/releases) 下载未签名的 `.ipa`。
+2. 使用自己的签名工具和证书签名后安装。未签名 IPA 不能直接在“文件”App 中点开安装。
+3. 首次打开完成引导，再登录音乐账号或导入本地音乐。
 
-核心性能特性由 Rust 编写的原生模块提供：
+开发中的新包也会上传到 [GitHub Actions](https://github.com/q3cc/SPlayer-Next/actions/workflows/ios-unsigned.yml)。打开成功的构建，在 Artifacts 中下载 `SPlayer-Next-iOS-unsigned-<commit>`，解压后可得到 IPA。
 
-| 模块            | 说明                                               |
-| --------------- | -------------------------------------------------- |
-| `audio-engine`  | 高性能音频解码（FFmpeg）、播放、FFT 频谱、封面提取 |
-| `media-ctrl`    | 系统媒体控制 + Discord Rich Presence               |
-| `taskbar-lyric` | Windows 任务栏歌词原生渲染                         |
+## iOS 适配内容
 
-`pnpm dev` 与 `pnpm build` 会自动编译原生模块。若只做 UI 开发想跳过，可设置 `SKIP_NATIVE_BUILD=true`。
+- 网易云扫码登录、账号资料、歌单与推荐。已有实机日志确认扫码授权成功，重启后登录状态保留；此前偶发失败的原因仍未完全确定。
+- iPhone / iPad 界面、安全区与横竖屏布局。iPad 宽横屏复用桌面布局，窄窗口使用紧凑布局；前台调度窗口和顶部系统按钮区域也做了适配。
+- 系统文件夹选择器。选择音乐文件夹后，复制到应用的 `Documents/Imported Music` 再导入曲库，不修改原文件夹，也不会自动同步原目录后续的变化。
+- 后台音频和锁屏、控制中心播放信息。系统封面优先使用高清图，网易云封面请求 600×600，加载失败时保留缩略图。
+- 系统动态歌词。在设置中打开“系统媒体控制”和“动态歌词”，系统卡片标题显示当前歌词，副标题显示“歌曲名 - 歌手”。一句歌词结束后保留 3 秒，没有新歌词才恢复歌曲信息。动态歌词默认关闭。
+- 运行日志。在“文件”App →“我的 iPhone / iPad”→“SPlayer Next”→“logs”查看或分享，以启动时间命名。
 
-### 快速开始
+这些功能已加入代码，但还没有覆盖所有机型、系统版本和音乐格式的实机验证。桌面歌词窗口、Windows 任务栏集成、插件和流媒体服务等上游功能，不代表在 iOS 上全部可用。
 
-```bash
-# 1. 安装依赖
-pnpm install
+## 遇到问题
 
-# 2. 启动开发（先以 debug 构建原生模块，再启动 Electron）
-pnpm dev
-```
+在[本仓库 Issues](https://github.com/q3cc/SPlayer-Next/issues)提供设备型号、系统版本、安装包对应的提交或发行版，以及复现步骤。界面问题附截图；登录和播放问题附本次启动的日志。
 
-### 构建
+当前版本临时开启详细日志，记录运行错误和登录各阶段状态。Cookie、令牌等凭据会脱敏，不记录请求体；分享前仍请检查是否含有不想公开的信息。历史日志不会自动删除，可以在“文件”App 中清理。导入的音乐也在共享目录中，注意不要误删。
+
+当前 Action 暂时跳过模拟器冒烟测试，构建成功不等于所有功能已通过实机测试。具体构建与诊断说明见 [iOS 构建文档](docs/ios-unsigned.md)。
+
+## 自行构建
+
+GitHub Actions 可直接生成未签名 IPA。本地构建需要 macOS、Xcode、Rust iOS target、Node.js 22.19.0 或更高版本，以及项目指定的 pnpm。
 
 ```bash
-pnpm build         # 完整构建：清理 → 原生模块 → 类型检查 → electron-vite
-
-pnpm build:win     # 打包 Windows
-pnpm build:mac     # 打包 macOS
-pnpm build:linux   # 打包 Linux（AppImage / deb / rpm / tar.gz / pacman）
-
-pnpm ios:build --ci --no-sign  # macOS 上构建未签名 IPA
+git clone https://github.com/q3cc/SPlayer-Next.git
+cd SPlayer-Next
+git switch main
+pnpm install --frozen-lockfile
+pnpm ios:init
+pnpm ios:build --ci --no-sign
 ```
 
-> 默认仅构建当前架构，暂不支持交叉编译。
+只检查移动端前端时可运行 `pnpm mobile:build`；实机开发使用 `pnpm ios:dev`。本分支包含官方 Tauri 插件的小范围补丁，安装依赖时请保留 `pnpm-workspace.yaml`、`pnpm-lock.yaml` 和 `patches/`。
 
-iOS / iPadOS 的未签名 IPA 可在 GitHub Actions 中直接构建，使用及实机签名说明见 [iOS / iPadOS 未签名构建](./docs/ios-unsigned.md)。
+## 来源与许可
 
-### 其他脚本
+原项目由 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及其贡献者开发，是 [SPlayer](https://github.com/SPlayer-Dev/SPlayer) 的继任版本。本仓库保留原作者署名和版权信息，iOS 适配不代表上游官方发布。
 
-```bash
-pnpm typecheck        # tsc + vue-tsc（node + web 双目标）
-pnpm lint             # ESLint
-pnpm format           # Prettier
-pnpm build:native     # 仅构建 Rust 原生模块（加 `--dev` 为 debug 构建）
-```
+使用的开源项目包括：
 
-## 致谢
+- [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)：歌词显示组件。
+- [NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)：网易云音乐 API。
+- [Tauri](https://github.com/tauri-apps/tauri) 及其[官方插件](https://github.com/tauri-apps/plugins-workspace)：移动端打包与系统接口。
 
-特别感谢以下让 SPlayer-Next 成为可能的开源项目：
-
-- [applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics) —— 类 Apple Music 歌词显示组件库
-- [NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced) —— 网易云音乐 API 备份 + 增强
-
-## 开源许可
-
-本项目基于 [GNU Affero General Public License v3.0 (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 许可开源。
-
-- **修改与分发：** 任何修改或分发都必须同样基于 **AGPL-3.0**，并一并提供完整源代码。
-- **派生作品：** 必须同样采用 **AGPL-3.0**，并在适当位置保留本项目的许可与版权信息。
-- **署名：** 必须保留原作者及版权信息。可为二次开发添加你自己的署名，但不得移除或篡改原始信息。
-- **商业用途：** 如用于售卖或其他盈利用途，必须提供源代码及原项目链接。由于本项目涉及第三方服务，商业使用可能存在法律风险。
-- **免责：** 本软件按「现状」提供，不附带任何形式的担保，详见 AGPL-3.0。
+项目沿用上游的 AGPL-3.0 许可，详见 [LICENSE](LICENSE)。分发修改版时应保留原作者及版权声明，并遵守许可中的源码提供要求。原项目的使用声明见[上游 README](https://github.com/SPlayer-Dev/SPlayer-Next/blob/dev/README.zh-CN.md)。
 
 ## 免责声明
 
-本项目仅供个人学习与研究使用，禁止用于商业及非法用途。部分功能依赖第三方 API，使用者须自行确保其使用符合相关法律法规及服务协议。对于因使用本项目而产生的任何直接或间接后果，作者不承担任何责任。
+沿用原项目声明：本项目仅供个人学习与研究使用，禁止用于商业及非法用途。部分功能依赖第三方 API，使用者须自行确保其使用符合相关法律法规及服务协议。对于因使用本项目而产生的任何直接或间接后果，作者不承担任何责任。

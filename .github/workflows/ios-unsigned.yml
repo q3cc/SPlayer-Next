@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - feat/ios-ipados
     paths:
       - ".github/workflows/ios-unsigned.yml"
