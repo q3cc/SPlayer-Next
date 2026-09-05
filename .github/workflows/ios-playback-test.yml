@@ -2,9 +2,15 @@ name: iPad song playback and lyric PiP test
 
 on:
   workflow_dispatch:
+    inputs:
+      evidence_run_id:
+        description: "仅复核已有测试截图时填写运行 ID；留空则实际播放"
+        required: false
+        default: ""
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: ios-playback-test-${{ github.ref }}
@@ -12,6 +18,7 @@ concurrency:
 
 jobs:
   playback:
+    if: inputs.evidence_run_id == ''
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -88,6 +95,11 @@ jobs:
               > ios-playback/system.log 2>&1 || true
           fi
           tail -100 ios-playback/test.log 2>/dev/null || true
+      - name: Verify PiP screenshots contain visible content
+        if: always() && env.IOS_PLAYBACK_DEVICE != ''
+        run: |
+          python3 -m pip install --target "$RUNNER_TEMP/pip-image-check" 'Pillow>=12,<13'
+          PYTHONPATH="$RUNNER_TEMP/pip-image-check" python3 scripts/ios-layout-tests/check-pip-screenshots.py ios-playback/screenshots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -95,3 +107,21 @@ jobs:
           path: ios-playback
           if-no-files-found: warn
           retention-days: 7
+
+  verify-evidence:
+    if: inputs.evidence_run_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.evidence_run_id }}
+          github-token: ${{ github.token }}
+          pattern: iPad-Senbonzakura-PiP-*
+          merge-multiple: true
+          path: ios-playback
+      - name: Check the recorded PiP screenshots
+        run: |
+          python3 -m pip install --target "$RUNNER_TEMP/pip-image-check" 'Pillow>=12,<13'
+          PYTHONPATH="$RUNNER_TEMP/pip-image-check" python3 scripts/ios-layout-tests/check-pip-screenshots.py ios-playback/screenshots
