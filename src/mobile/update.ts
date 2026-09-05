@@ -59,7 +59,7 @@ export const mobileUpdate: UpdateApi = {
         const response = await fetchWithProxy(
           `https://api.github.com/repos${repository.pathname}/releases${channel === "action" ? "/tags/action-latest" : "?per_page=100"}`,
           {
-            headers: { Accept: "application/vnd.github+json" },
+            headers: { Accept: "application/vnd.github+json", "User-Agent": "SPlayer-Next-ios" },
             signal: AbortSignal.timeout(15000),
           },
         );
