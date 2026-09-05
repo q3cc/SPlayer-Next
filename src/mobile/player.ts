@@ -85,7 +85,7 @@ audio.addEventListener("seeked", () => {
   mobileLyricPip.sync(status(), true);
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) return;
+  if (isTauri() || document.hidden) return;
   emit({ type: "status", data: status() });
   emit({ type: "position", data: { position: positionMs(), duration: durationMs() } });
 });

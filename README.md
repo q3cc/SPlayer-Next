@@ -20,6 +20,7 @@
 - **在线曲库**：支持网易云扫码登录、歌单浏览与每日推荐，本地持久化保存登录状态。
 - **本地音乐**：支持从“文件”App 批量导入本地音频至应用隔离沙盒。
 - **后台与控制中心**：支持锁屏封面展示、后台音频播放与系统级多媒体控制。
+- **原生音效**：10 段均衡器、预设、前级增益与升降调实时生效；在播放器“更多 → 均衡器”中调整。
 - **歌词体验**：
   - **画中画小窗歌词**：支持单/双行、逐字高亮、音译与翻译显示，支持大小与颜色自定义。
   - **系统标题歌词**：支持将实时歌词临时映射为锁屏/控制中心的媒体标题。
@@ -75,4 +76,5 @@ pnpm ios:build --ci --no-sign
 - 本项目沿用上游项目的 **AGPL-3.0** 开源许可协议。
 - 感谢 [SPlayer-Dev](https://github.com/SPlayer-Dev) 及所有上游贡献者。
 - 核心依赖：[applemusic-like-lyrics](https://github.com/Steve-xmh/applemusic-like-lyrics)、[NeteaseCloudMusicApiEnhanced](https://github.com/neteasecloudmusicapienhanced/api-enhanced)、[Tauri](https://github.com/tauri-apps/tauri)。
+- 原生音频播放复用 [AudioStreaming](https://github.com/dimitris-c/AudioStreaming)，均衡器和升降调使用系统音频节点。
 - 鸣谢社区：[LinuxDO](https://linux.do/)。
