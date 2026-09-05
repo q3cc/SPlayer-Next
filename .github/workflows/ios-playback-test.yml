@@ -3,6 +3,11 @@ name: iPad song playback and lyric PiP test
 on:
   workflow_dispatch:
     inputs:
+      scope:
+        description: "测试范围：原生均衡器或歌词小窗"
+        type: choice
+        options: [equalizer, pip]
+        default: pip
       evidence_run_id:
         description: "仅复核已有测试截图时填写运行 ID；留空则实际播放"
         required: false
@@ -66,15 +71,21 @@ jobs:
           timed 300 xcrun simctl bootstatus "$device_id" -b | tee ios-playback/boot.log
           timed 120 xcrun simctl install "$device_id" "$app_path"
           xcrun simctl status_bar "$device_id" override --time '9:41' --batteryState charged --batteryLevel 100
-      - name: Play 千本樱 and exercise lyric PiP
+      - name: Play 千本樱 and verify selected feature
         timeout-minutes: 12
         shell: bash
+        env:
+          TEST_SCOPE: ${{ inputs.scope }}
         run: |
           set -euo pipefail
+          test_case="testSenbonzakuraPlaybackAndPiP"
+          if [[ "$TEST_SCOPE" == "equalizer" ]]; then
+            test_case="testNativeEqualizerPlayback"
+          fi
           xcodegen generate --spec scripts/ios-layout-tests/project.yml
           xcodebuild test -project scripts/ios-layout-tests/SPlayerLayoutTests.xcodeproj \
             -scheme LayoutTests -destination "platform=iOS Simulator,id=$IOS_PLAYBACK_DEVICE" \
-            -only-testing:LayoutTests/PlaybackTests -parallel-testing-enabled NO \
+            "-only-testing:LayoutTests/PlaybackTests/$test_case" -parallel-testing-enabled NO \
             -resultBundlePath ios-playback/playback.xcresult CODE_SIGNING_ALLOWED=NO \
             > ios-playback/test.log 2>&1
       - name: Collect screenshots and application logs
@@ -96,7 +107,7 @@ jobs:
           fi
           tail -100 ios-playback/test.log 2>/dev/null || true
       - name: Verify PiP screenshots contain visible content
-        if: always() && env.IOS_PLAYBACK_DEVICE != ''
+        if: always() && env.IOS_PLAYBACK_DEVICE != '' && inputs.scope != 'equalizer'
         run: |
           python3 -m pip install --target "$RUNNER_TEMP/pip-image-check" 'Pillow>=12,<13'
           PYTHONPATH="$RUNNER_TEMP/pip-image-check" python3 scripts/ios-layout-tests/check-pip-screenshots.py ios-playback/screenshots

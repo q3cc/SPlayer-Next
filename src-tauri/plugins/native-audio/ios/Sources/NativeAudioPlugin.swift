@@ -178,7 +178,15 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
   }
 
   @objc func status(_ invoke: Invoke) {
-    DispatchQueue.main.async { invoke.resolve(self.snapshot()) }
+    DispatchQueue.main.async {
+      var value = self.snapshot()
+      value["equalizer"] = [
+        "enabled": self.audioEffects.equalizer.bands.allSatisfy { !$0.bypass },
+        "bands": self.audioEffects.equalizer.bands.map { Double($0.gain) },
+        "preamp": Double(self.audioEffects.equalizer.globalGain)
+      ] as JSObject
+      invoke.resolve(value)
+    }
   }
   @objc func visibility(_ invoke: Invoke) throws {
     let request = try invoke.parseArgs(VisibilityRequest.self)

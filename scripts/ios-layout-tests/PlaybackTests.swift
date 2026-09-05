@@ -1,6 +1,27 @@
 import XCTest
 
 final class PlaybackTests: XCTestCase {
+    func testNativeEqualizerPlayback() {
+        continueAfterFailure = false
+        let app = XCUIApplication(bundleIdentifier: "top.imsyy.splayer-next.ios")
+        app.launch()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["Play Senbonzakura test"].waitForExistence(timeout: 45))
+        app.buttons["Play Senbonzakura test"].tap()
+        XCTAssertTrue(app.staticTexts["Song playback verified"].waitForExistence(timeout: 150))
+        app.buttons["Verify equalizer test"].tap()
+        XCTAssertTrue(app.staticTexts["Equalizer playback verified"].waitForExistence(timeout: 20))
+        capture("eq-live-settings")
+        XCUIDevice.shared.press(.home)
+        sleep(8)
+        app.activate()
+        app.buttons["Verify background audio test"].tap()
+        XCTAssertTrue(app.staticTexts["Background audio verified"].waitForExistence(timeout: 20))
+        app.buttons["Verify pause resume test"].tap()
+        XCTAssertTrue(app.staticTexts["Pause resume verified"].waitForExistence(timeout: 20))
+        capture("eq-background-resumed")
+    }
+
     private func capture(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name

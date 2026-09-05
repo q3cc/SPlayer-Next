@@ -6,12 +6,14 @@ import { useStatusStore } from "@/stores/status";
 import { useSettingsStore } from "@/stores/settings";
 import { CURRENT_AGREEMENT_VERSION } from "@shared/constants/agreement";
 import { mobileLyricPip } from "./lyricPip";
+import type { PlayerStatus } from "@shared/types/player";
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** 仅在手动 Actions 的模拟器测试构建启用，不随普通 IPA 暴露测试入口。 */
 export const installPlaybackTest = async (): Promise<void> => {
   const settings = useSettingsStore();
+  await settings.setSystem("system.diagnosticLogging", true);
   await settings.setSystem("system.onboardingCompleted", true);
   await settings.setSystem("system.agreedAgreementVersion", CURRENT_AGREEMENT_VERSION);
   location.hash = "#/";
@@ -128,6 +130,45 @@ export const installPlaybackTest = async (): Promise<void> => {
       resumed: resumed.position,
     });
     report.textContent = "Pause resume verified";
+  });
+  let backgroundPosition = 0;
+  button("Verify equalizer test", async () => {
+    const bands = [3, -2, 1, 0, -3, 6, 2, -1, 4, -2];
+    await settings.setSystem("player.equalizer.bands", bands);
+    await settings.setSystem("player.equalizer.preamp", -6);
+    await delay(500);
+    type NativeStatus = PlayerStatus & {
+      equalizer?: { enabled: boolean; bands: number[]; preamp: number };
+    };
+    const value = (await window.api.player.getStatus()).data as NativeStatus | undefined;
+    if (
+      value?.state !== "playing" ||
+      !value.equalizer?.enabled ||
+      value.equalizer.preamp !== -6 ||
+      JSON.stringify(value.equalizer.bands) !== JSON.stringify(bands)
+    ) {
+      throw new Error("均衡器控件未改变原生音频节点");
+    }
+    await settings.setSystem("player.equalizer.enabled", false);
+    const bypassed = (await window.api.player.getStatus()).data as NativeStatus | undefined;
+    if (bypassed?.equalizer?.enabled !== false || bypassed.equalizer.preamp !== 0) {
+      throw new Error("关闭均衡器后原生节点未旁路");
+    }
+    await settings.setSystem("player.equalizer.enabled", true);
+    backgroundPosition = (await window.api.player.getStatus()).data?.position ?? 0;
+    console.info("[playback-test] equalizer-live-update-verified", value.equalizer);
+    report.textContent = "Equalizer playback verified";
+  });
+  button("Verify background audio test", async () => {
+    const value = (await window.api.player.getStatus()).data;
+    if (value?.state !== "playing" || value.position < backgroundPosition + 4000) {
+      throw new Error("原生均衡器播放在后台停止或进度未前进");
+    }
+    console.info("[playback-test] equalizer-background-verified", {
+      before: backgroundPosition,
+      after: value.position,
+    });
+    report.textContent = "Background audio verified";
   });
   button("Close lyric PiP test", async () => {
     await mobileLyricPip.close();
