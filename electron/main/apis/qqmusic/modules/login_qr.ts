@@ -246,14 +246,14 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
   if (statusCode === "0") {
     const jumpUrl = args[2] ?? "";
     if (!jumpUrl || !jumpUrl.startsWith("http")) {
-      throw new Error(`无效的跳转链接: ${jumpUrl}`);
+      throw new Error("无效的 QQ 登录跳转链接");
     }
 
     // 收集 ptqrlogin 返回的所有 cookies 并附带 qrsig
     const initialCookies = extractCookies(res, { qrsig: key });
 
     // 请求 check_sig 校验跳转并建立会话 Cookie
-    coreLog.info("[qm-login] 正在执行 check_sig 授权...", { jumpUrl });
+    coreLog.info("[qm-login] 正在执行 check_sig 授权...");
     const checkSigRes = await fetchWithProxy(jumpUrl, {
       headers: {
         Referer: "https://xui.ptlogin2.qq.com/",
@@ -271,8 +271,7 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
     if (!p_skey) {
       coreLog.warn("[qm-login] check_sig 未提取到 p_skey:", {
         status: checkSigRes.status,
-        headers: Object.fromEntries(checkSigRes.headers.entries()),
-        cookies: sessionCookies,
+        cookieCount: Object.keys(sessionCookies).length,
       });
       throw new Error("获取 p_skey 失败");
     }
@@ -310,7 +309,7 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
     if (!codeMatch) {
       coreLog.warn("[qm-login] authorize 未返回 code:", {
         status: authRes.status,
-        location,
+        hasLocation: Boolean(location),
       });
       throw new Error("获取 QQ 授权 code 失败");
     }

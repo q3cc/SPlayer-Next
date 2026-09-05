@@ -44,6 +44,21 @@ const release = (tag = "ios-v1.1.0", extra = {}) => ({
 });
 
 describe("iOS 检查当前仓库更新", () => {
+  it("GitHub 限流时提供明确原因，不当作已是最新版", async () => {
+    const { mobileUpdate } = await import("./update");
+    const listener = vi.fn();
+    mobileUpdate.onEvent(listener);
+    mocks.fetch.mockResolvedValue(
+      new Response(null, { status: 403, headers: { "x-ratelimit-remaining": "0" } }),
+    );
+    await mobileUpdate.check(true);
+    expect(listener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("请求次数已用完"),
+      }),
+    );
+  });
   it("检查途中切换通道时忽略旧响应，再请求新通道", async () => {
     const { mobileUpdate } = await import("./update");
     const listener = vi.fn();

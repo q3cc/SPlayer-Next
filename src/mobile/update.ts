@@ -56,6 +56,11 @@ export const mobileUpdate: UpdateApi = {
         ? checking
         : checking.then(() => mobileUpdate.check(manual));
     checkingChannel = channel;
+    console.info("[update] check-start", {
+      channel,
+      version: __APP_VERSION__,
+      commit: __COMMIT_HASH__,
+    });
     listeners.forEach((listener) => listener({ type: "checking" }));
     checking = (async () => {
       try {
@@ -72,7 +77,22 @@ export const mobileUpdate: UpdateApi = {
           listeners.forEach((listener) => listener({ type: "notAvailable", manual: manualCheck }));
           return;
         }
-        if (!response.ok) throw new Error(`GitHub HTTP ${response.status}`);
+        console.info("[update] response", {
+          channel,
+          status: response.status,
+          contentType: response.headers.get("content-type"),
+          contentEncoding: response.headers.get("content-encoding"),
+          rateRemaining: response.headers.get("x-ratelimit-remaining"),
+        });
+        if (!response.ok) {
+          if (
+            response.status === 429 ||
+            (response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0")
+          ) {
+            throw new Error("GitHub 请求次数已用完，请稍后重试或前往下载页");
+          }
+          throw new Error(`GitHub HTTP ${response.status}`);
+        }
         const payload = await response.json();
         if (channel !== store.get("update.channel")) return;
         const releases: Release[] = channel === "action" ? [payload] : payload;
@@ -121,6 +141,12 @@ export const mobileUpdate: UpdateApi = {
           ? !action.commit.startsWith(__COMMIT_HASH__) &&
             Date.parse(action.date) > Date.parse(__COMMIT_DATE__)
           : difference >= 0 && Boolean(latest && latest.version[difference] > current[difference]);
+        console.info("[update] check-result", {
+          channel,
+          hasCandidate: Boolean(latest),
+          isNew,
+          commit: action?.commit,
+        });
         if (!latest || !isNew) {
           selected = undefined;
           listeners.forEach((listener) => listener({ type: "notAvailable", manual: manualCheck }));
@@ -160,6 +186,7 @@ export const mobileUpdate: UpdateApi = {
           }),
         );
       } catch (error) {
+        console.warn("[update] check-failed", { channel }, error);
         listeners.forEach((listener) =>
           listener({ type: "error", manual: manualCheck, message: String(error) }),
         );
@@ -190,6 +217,7 @@ export const mobileUpdate: UpdateApi = {
       listeners.forEach((listener) => listener({ type: "downloaded", meta: update.meta }));
       await mobileUpdate.install();
     } catch (error) {
+      console.warn("[update] download-failed", error);
       listeners.forEach((listener) =>
         listener({ type: "error", manual: true, message: String(error) }),
       );

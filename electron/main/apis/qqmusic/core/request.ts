@@ -105,7 +105,18 @@ const postRaw = async (
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(8000),
   });
-  return (await res.json()) as FcgResponse;
+  if (!res.ok) throw new Error(`QM HTTP 错误: ${res.status}`);
+  try {
+    return (await res.json()) as FcgResponse;
+  } catch (error) {
+    // 只记录传输格式，不记录可能包含 musickey 的响应正文。
+    coreLog.warn("[qm-response] JSON 解析失败", {
+      status: res.status,
+      contentType: res.headers.get("content-type"),
+      contentEncoding: res.headers.get("content-encoding"),
+    });
+    throw error;
+  }
 };
 
 /** 初始化 / 刷新 session（1h 过期）；并发安全：同一时刻只发一次 */

@@ -23,6 +23,13 @@ describe("移动端登录请求头", () => {
     expect(cargo).toMatch(/tauri-plugin-http\s*=\s*\{[^\n]*"unsafe-headers"/);
   });
 
+  it("原生请求必须解压 QM 和网易云主动协商的 gzip/deflate 响应", () => {
+    const cargo = readFileSync("src-tauri/Cargo.toml", "utf8");
+    for (const feature of ["gzip", "deflate"]) {
+      expect(cargo).toMatch(new RegExp(`tauri-plugin-http\\s*=\\s*\\{[^\\n]*"${feature}"`));
+    }
+  });
+
   it("把公共登录实现的 Cookie、Origin 和 Referer 原样交给原生请求", async () => {
     fetchNative.mockResolvedValueOnce(new Response("{}"));
     await fetchWithProxy("https://music.163.com/weapi/login/qrcode/client/login", {

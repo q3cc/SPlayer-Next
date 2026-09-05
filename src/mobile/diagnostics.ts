@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { store } from "./shims/store";
 
 const secretKey =
-  /cookie|authorization|password|passwd|token|secret|csrf|unikey|codekey|chainid|qrurl|qrimg|MUSIC_[UA]/i;
+  /cookie|authorization|password|passwd|token|secret|csrf|unikey|codekey|chainid|qrurl|qrimg|qrsig|ptsigx|p_skey|musickey|MUSIC_[UA]/i;
 
 /** 控制台对象和错误统一脱敏，避免把可复用的登录凭据写入日志。 */
 export const diagnosticText = (value: unknown): string => {
@@ -12,7 +12,7 @@ export const diagnosticText = (value: unknown): string => {
       return item
         .replace(/((?:set-cookie|cookie|authorization)\s*[:=]\s*)[^\r\n]+/gi, "$1[REDACTED]")
         .replace(
-          /((?:MUSIC_[UA]|__csrf|token|password|unikey|codekey|chainId)["']?\s*[=:]\s*["']?)[^\s;,&#"'}]+/gi,
+          /((?:MUSIC_[UA]|__csrf|token|password|unikey|codekey|chainId|ptsigx|qrsig|p_skey|musickey)["']?\s*[=:]\s*["']?)[^\s;,&#"'}]+/gi,
           "$1[REDACTED]",
         );
     if (!item || typeof item !== "object") return typeof item === "bigint" ? String(item) : item;

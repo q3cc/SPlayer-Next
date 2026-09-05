@@ -33,6 +33,9 @@ describe("诊断日志脱敏", () => {
     "https://music.163.com/?codekey=private-value&foo=bar",
     '{"MUSIC_U":"private-value"}',
     "Authorization: Bearer private-value",
+    "https://ssl.ptlogin2.graph.qq.com/check_sig?ptsigx=private-value&uin=123",
+    '{"musickey":"private-value"}',
+    "qrsig=private-value",
   ])("隐藏字符串内的凭据：%s", (value) => {
     expect(diagnosticText(value)).not.toContain("private-value");
     expect(diagnosticText(new Error(value))).not.toContain("private-value");
