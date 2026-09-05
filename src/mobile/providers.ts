@@ -20,10 +20,34 @@ const call = async (
   name: string,
   params: Record<string, unknown> = {},
 ): Promise<ApiCallResponse> => {
+  const started = performance.now();
+  console.debug("[api] start", { platform, name });
   try {
     if (platform === "netease") {
-      const { callNetease } = await loadNetease();
+      const { callNetease, getNeteaseCookies } = await loadNetease();
       const response = await callNetease(name, params);
+      const body = response.body;
+      console.info("[api] result", {
+        platform,
+        name,
+        status: response.status,
+        code: body?.code ?? body?.data?.code,
+        message: body?.message ?? body?.msg,
+        elapsedMs: Math.round(performance.now() - started),
+      });
+      if (name.startsWith("login") || name === "logout") {
+        const session = getNeteaseCookies();
+        console.info("[login] persisted-state", {
+          name,
+          hasUserCredential: Boolean(session.MUSIC_U),
+          hasAnonymousCredential: Boolean(session.MUSIC_A),
+          hasAntiforgeryCredential: Boolean(session.__csrf),
+          hasBrowserSession: Boolean(session["JSESSIONID-WYYY"]),
+          hasAccount: Boolean(body?.data?.account ?? body?.account),
+          hasProfile: Boolean(body?.data?.profile ?? body?.profile),
+          hasNickname: Boolean((body?.data?.profile ?? body?.profile)?.nickname),
+        });
+      }
       return { ok: true, status: response.status, body: response.body };
     }
     if (platform === "qqmusic") {
@@ -33,6 +57,11 @@ const call = async (
     const { callKugou } = await loadKugou();
     return { ok: true, data: await callKugou(name, params) };
   } catch (error) {
+    console.error(
+      "[api] failure",
+      { platform, name, elapsedMs: Math.round(performance.now() - started) },
+      error,
+    );
     if (
       error instanceof Error &&
       "response" in error &&
@@ -53,6 +82,7 @@ const call = async (
 };
 
 const clearSession = async (platform: ApiPlatform): Promise<void> => {
+  console.warn("[login] clear-session", { platform });
   if (platform === "netease") (await loadNetease()).clearNeteaseCookies();
   if (platform === "qqmusic") (await loadQQMusic()).clearQQMusicCookies();
   if (platform === "kugou") (await loadKugou()).clearKugouSession();

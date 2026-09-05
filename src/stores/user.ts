@@ -214,6 +214,7 @@ export const useUserStore = defineStore(
 
     /** 清除失效凭据并切换到游客会话 */
     const invalidateSession = async (): Promise<void> => {
+      console.warn("[login] invalidate-session");
       statusRequestId += 1;
       resetAccountState();
       if (invalidationPromise) return invalidationPromise;
@@ -608,6 +609,11 @@ export const useUserStore = defineStore(
       const requestId = ++statusRequestId;
       try {
         const latest = await fetchLoginStatus();
+        console.info("[login] status-response", {
+          requestId,
+          currentRequestId: statusRequestId,
+          hasProfile: Boolean(latest),
+        });
         if (requestId !== statusRequestId) return profile.value !== null;
         if (latest) {
           const previousUserId = profile.value?.userId;

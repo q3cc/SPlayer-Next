@@ -14,6 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }
@@ -26,6 +27,7 @@ tauri-plugin-os = "2"
 tauri-plugin-store = "2"
 
 [target.'cfg(target_os = "ios")'.dependencies]
+libc = "0.2"
 objc2-avf-audio = { version = "0.3.2", default-features = false, features = ["AVAudioSession", "AVAudioSessionTypes"] }
 
 [features]

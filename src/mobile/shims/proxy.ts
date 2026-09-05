@@ -33,7 +33,7 @@ export const getNetworkProxyUrl = (): string | null => {
   return `${config.protocol}://${host}:${port}`;
 };
 
-export const fetchWithProxy = (
+export const fetchWithProxy = async (
   input: string | URL | Request,
   init?: RequestInit,
 ): Promise<Response> => {
@@ -44,7 +44,39 @@ export const fetchWithProxy = (
     init?.headers ?? (input instanceof Request ? input.headers : undefined),
   );
   if (!headers.has("Origin")) headers.set("Origin", "");
-  return tauriFetch(input, { ...init, headers, ...(proxy ? { proxy: { all: proxy } } : {}) });
+  const url = requestUrl(input);
+  const endpoint = url ? `${url.origin}${url.pathname}` : "invalid-url";
+  const started = performance.now();
+  console.debug("[http] start", {
+    endpoint,
+    method: init?.method ?? "GET",
+    hasCredentialHeader: headers.has("Cookie"),
+    origin: headers.get("Origin"),
+    referer: headers.get("Referer"),
+    userAgent: headers.get("User-Agent"),
+    proxyEnabled: Boolean(proxy),
+  });
+  try {
+    const response = await tauriFetch(input, {
+      ...init,
+      headers,
+      ...(proxy ? { proxy: { all: proxy } } : {}),
+    });
+    console.info("[http] response", {
+      endpoint,
+      status: response.status,
+      elapsedMs: Math.round(performance.now() - started),
+      hasResponseCredentials: Boolean(response.headers.get("set-cookie")),
+    });
+    return response;
+  } catch (error) {
+    console.error(
+      "[http] failure",
+      { endpoint, elapsedMs: Math.round(performance.now() - started) },
+      error,
+    );
+    throw error;
+  }
 };
 
 export const testNetworkProxy = async (): Promise<boolean> => {

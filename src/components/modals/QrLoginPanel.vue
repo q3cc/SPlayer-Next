@@ -23,6 +23,7 @@ const tip = computed(() => {
 
 const refresh = async (): Promise<void> => {
   if (refreshing.value) return;
+  console.info("[login-qr] create-start", { previousState: state.value });
   refreshing.value = true;
   pause();
   key.value = "";
@@ -32,6 +33,7 @@ const refresh = async (): Promise<void> => {
   try {
     const result = await props.adapter.create();
     key.value = result.key;
+    console.info("[login-qr] create-ready");
     if (result.content.startsWith("data:image/") || result.content.startsWith("blob:")) {
       qrUrl.value = result.content;
     } else {
@@ -57,6 +59,11 @@ const poll = async (): Promise<void> => {
   checking = true;
   try {
     const result = await props.adapter.check(checkedKey);
+    console.info("[login-qr] poll-result", {
+      state: result.state,
+      active: props.active,
+      stale: key.value !== checkedKey,
+    });
     if (!props.active || key.value !== checkedKey) return;
     state.value = result.state;
     nickname.value = result.nickname ?? nickname.value;
@@ -71,7 +78,8 @@ const poll = async (): Promise<void> => {
       key.value = "";
       emit("success");
     }
-  } catch {
+  } catch (error) {
+    console.warn("[login-qr] poll-error", error);
     // 暂时断网时保留当前二维码，由下一次轮询继续确认。
   } finally {
     checking = false;

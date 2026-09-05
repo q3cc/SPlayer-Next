@@ -15,7 +15,9 @@ const loading = ref(false);
 const cookieDialogOpen = ref(false);
 
 const finishLogin = async (): Promise<boolean> => {
+  console.info("[login-qr] profile-validation-start");
   const ok = await user.fetchStatus();
+  console.info("[login-qr] profile-validation-result", { ok });
   if (ok) {
     toast.success(t("login.success"));
     emit("update:open", false);

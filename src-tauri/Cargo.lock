@@ -3691,6 +3691,8 @@ dependencies = [
 name = "splayer-next-mobile"
 version = "1.2.0-alpha.1"
 dependencies = [
+ "chrono",
+ "libc",
  "objc2-avf-audio",
  "serde",
  "serde_json",
