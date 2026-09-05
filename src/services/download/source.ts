@@ -54,7 +54,7 @@ export const resolveDownloadSource = async (
   }
   if (track.source === "kugou") {
     const resolved = await resolveKugouUrl(track, level);
-    if (resolved.available) return { url: resolved.url };
+    if (resolved.available && !resolved.isTrial) return { url: resolved.url };
   }
   // 其他播放源走插件
   if (isPlatform(track.source)) {

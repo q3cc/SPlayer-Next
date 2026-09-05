@@ -8,7 +8,7 @@ export type KugouPlayUrlResult =
 
 interface SongUrlResponse {
   code: number;
-  data?: { url?: string };
+  data?: { url?: string; isTrial?: boolean };
 }
 
 const QUALITY_ORDER: QualityLevel[] = ["lq", "sq", "hq", "lossless", "hi-res"];
@@ -23,19 +23,28 @@ const clampQuality = (requested: QualityLevel, track: Track): QualityLevel => {
 export const resolveKugouUrl = async (
   track: Track,
   level: QualityLevel,
+  allowTrial = false,
 ): Promise<KugouPlayUrlResult> => {
-  try {
-    const result = await kugouCall<SongUrlResponse>("song_url", {
-      hash: track.id,
-      audioId: track.extId,
-      albumId: track.album?.id,
-      level: clampQuality(level, track),
-    });
-    if (result.code === 200 && result.data?.url) {
-      return { available: true, url: result.data.url, isTrial: false };
+  // 所有完整音质均不可用后才请求试听；下载调用默认不进入试听分支。
+  for (const freePart of allowTrial ? [false, true] : [false]) {
+    try {
+      const result = await kugouCall<SongUrlResponse>("song_url", {
+        hash: track.id,
+        audioId: track.extId,
+        albumId: track.album?.id,
+        level: clampQuality(level, track),
+        freePart,
+      });
+      if (result.code === 200 && result.data?.url) {
+        return {
+          available: true,
+          url: result.data.url,
+          isTrial: freePart || result.data.isTrial === true,
+        };
+      }
+    } catch (error) {
+      console.warn("[kugou] resolve URL failed:", { freePart }, error);
     }
-  } catch (error) {
-    console.warn("[kugou] resolve URL failed:", error);
   }
   return { available: false, errorCode: ErrorCode.URL_RESOLVE_FAILED };
 };

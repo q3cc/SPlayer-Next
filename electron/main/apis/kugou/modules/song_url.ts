@@ -150,7 +150,13 @@ const songUrl: KGModule = async (params) => {
       if (candidate.quality !== preferred) {
         coreLog.info(`[kg-song-url] ${preferred} 不可用，降档至 ${candidate.quality}`);
       }
-      return { code: 200, data: { url: urls[0] } };
+      return {
+        code: 200,
+        data: {
+          url: urls[0],
+          isTrial: Boolean(params.freePart) || Number(response.is_free_part) === 1,
+        },
+      };
     }
   }
   return {
