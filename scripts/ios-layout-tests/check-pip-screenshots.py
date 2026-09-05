@@ -24,9 +24,9 @@ def main():
             width, height = image.size
             if width <= height:
                 raise RuntimeError("此检查仅用于未拖动画中画的横屏 iPad 测试")
-            # 避开窗口边缘、状态栏和桌面图标，仅检测小窗内歌词区域。
-            region = image.crop((int(width * .75), int(height * .08),
-                                 int(width * .96), int(height * .21))).convert("RGB")
+            # 同时落在旧版 16:9 与新版 4:1 小窗内部，不能把窄条下方壁纸当成歌词。
+            region = image.crop((int(width * .78), int(height * .055),
+                                 int(width * .96), int(height * .115))).convert("RGB")
             bright = sum(min(pixel) >= 180 for pixel in region.getdata())
             ratio = bright / (region.width * region.height)
             print(f"{prefix}: bright_pixels={bright}, ratio={ratio:.6f}", flush=True)
