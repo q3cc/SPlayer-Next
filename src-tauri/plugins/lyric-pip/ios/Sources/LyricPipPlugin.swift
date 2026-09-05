@@ -5,11 +5,18 @@ import Tauri
 import UIKit
 import ImageIO
 
+private struct TimedWord: Decodable {
+  let text: String
+  let start: Double
+  let end: Double
+}
+
 private struct LyricRow: Decodable {
   let start: Double
   let end: Double
   let rows: [String]
   let primary: Int
+  let words: [TimedWord]
 }
 
 private struct LyricContent: Decodable {
@@ -52,6 +59,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var anchorTime = ProcessInfo.processInfo.systemUptime
   private var lastText: [String]?
   private var lastPrimary = -1
+  private var lastLyricTime = -Double.infinity
   private var cachedFrame: CVPixelBuffer?
   private var lastFrameTime = -Double.infinity
   private var frameCount = 0
@@ -232,6 +240,9 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       }
       if let current = content.lines.last(where: { $0.start <= time }), current.end + 3000 > time {
         delay = min(delay, max(0.02, (current.end + 3000 - time) / (1000 * speed)))
+        if !current.words.isEmpty && time < current.end {
+          delay = min(delay, max(0.02, 0.1 - (now - lastFrameTime)))
+        }
       }
     }
     timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
@@ -265,13 +276,17 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let info = [title, content?.artist ?? ""].filter { !$0.isEmpty }.joined(separator: " - ")
     let text = active?.rows ?? [title, info]
     let primary = active?.primary ?? 0
+    let words = active?.words ?? []
     let animateDisc = playing && coverImage != nil && now - lastFrameTime >= 0.095
-    if text != lastText || primary != lastPrimary || cachedFrame == nil || animateDisc {
+    let animateWords = !words.isEmpty && time != lastLyricTime &&
+      (!playing || force || now - lastFrameTime >= 0.095)
+    if text != lastText || primary != lastPrimary || cachedFrame == nil || animateDisc || animateWords {
       let angle = discAngle + (playing ? (now - discAnchorTime) * .pi / 10 : 0)
-      guard let buffer = drawFrame(text, primary: primary, angle: CGFloat(angle)) else { return }
+      guard let buffer = drawFrame(text, primary: primary, angle: CGFloat(angle), words: words, time: time) else { return }
       cachedFrame = buffer
       lastText = text
       lastPrimary = primary
+      lastLyricTime = time
     } else if !force && !needsFlush && now - lastFrameTime < 1 {
       return
     }
@@ -308,7 +323,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   /// 使用可共享的 IOSurface，并在送往系统显示层之前结束 CPU 写入锁。
-  private func drawFrame(_ text: [String], primary: Int, angle: CGFloat) -> CVPixelBuffer? {
+  private func drawFrame(_ text: [String], primary: Int, angle: CGFloat, words: [TimedWord], time: Double) -> CVPixelBuffer? {
     var pixelBuffer: CVPixelBuffer?
     let attributes: [CFString: Any] = [
       kCVPixelBufferCGImageCompatibilityKey: true,
@@ -373,11 +388,30 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       let size = max(16, min(baseSize, baseSize * 464 / max(1, naturalWidth)))
       let rect = CGRect(x: 152, y: (160 - CGFloat(text.count) * 34) / 2 + CGFloat(i) * 34,
         width: 464, height: 34)
-      (text[i] as NSString).draw(in: rect, withAttributes: [
+      let highlight = UIColor(red: 1, green: 0.73, blue: 0.86, alpha: 1)
+      var attributes: [NSAttributedString.Key: Any] = [
         .font: UIFont.systemFont(ofSize: size, weight: weight),
-        .foregroundColor: i == primary ? UIColor(red: 1, green: 0.73, blue: 0.86, alpha: 1) : UIColor.white,
+        .foregroundColor: i == primary && words.isEmpty ? highlight : UIColor.white,
         .paragraphStyle: paragraph
-      ])
+      ]
+      (text[i] as NSString).draw(in: rect, withAttributes: attributes)
+      if i == primary && !words.isEmpty {
+        var prefix = ""
+        var width: CGFloat = 0
+        for word in words {
+          if time < word.start { break }
+          let before = (String(prefix.drop(while: { $0.isWhitespace })) as NSString).size(withAttributes: attributes).width
+          prefix += word.text
+          let after = (String(prefix.drop(while: { $0.isWhitespace })) as NSString).size(withAttributes: attributes).width
+          let fraction = time >= word.end ? 1 : max(0, min(1, (time - word.start) / max(1, word.end - word.start)))
+          if time >= word.start { width = max(width, before + (after - before) * CGFloat(fraction)) }
+        }
+        context.saveGState()
+        context.clip(to: CGRect(x: rect.minX, y: rect.minY, width: min(rect.width, width), height: rect.height))
+        attributes[.foregroundColor] = highlight
+        (text[i] as NSString).draw(in: rect, withAttributes: attributes)
+        context.restoreGState()
+      }
     }
     UIGraphicsPopContext()
     context.flush()
@@ -411,6 +445,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     content = nil
     lastText = nil
     lastPrimary = -1
+    lastLyricTime = -.infinity
     cachedFrame = nil
     coverTask?.cancel()
     coverTask = nil

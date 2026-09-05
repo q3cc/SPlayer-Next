@@ -45,15 +45,37 @@ beforeEach(() => {
 });
 
 describe("歌词画中画", () => {
-  it("复用解析结果和翻译，不发送背景行、空行及逐字数据", async () => {
+  it("复用解析结果和翻译，不发送背景行、空行及伪逐字数据", async () => {
     const { pipContent } = await import("./lyricPip");
     expect(pipContent(value)).toEqual({
       title: "歌曲",
       artist: "歌手",
       cover: "",
       offset: 250,
-      lines: [{ start: 1000, end: 3000, primary: 0, rows: ["第一句", "翻译"] }],
+      lines: [{ start: 1000, end: 3000, primary: 0, words: [], rows: ["第一句", "翻译"] }],
     });
+  });
+
+  it("保留真实逐字时间轴，单行双行使用同一套原始时间", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const timed = {
+      ...value,
+      lyric: [
+        {
+          ...value.lyric[0],
+          words: [
+            { word: "你", startTime: 1000, endTime: 1500 },
+            { word: "好", startTime: 1600, endTime: 2000 },
+          ],
+        },
+      ],
+    };
+    for (const doubleLine of [false, true]) {
+      expect(pipContent(timed, { doubleLine, showTranslation: true }).lines[0].words).toEqual([
+        { text: "你", start: 1000, end: 1500 },
+        { text: "好", start: 1600, end: 2000 },
+      ]);
+    }
   });
 
   it("默认单行，不附带歌名或下一句", async () => {

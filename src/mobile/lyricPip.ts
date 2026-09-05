@@ -4,6 +4,7 @@ import type { PlayerStatus } from "@shared/types/player";
 import { toast } from "@/composables/useToast";
 import { store } from "./shims/store";
 import type { SystemConfig } from "@shared/types/settings";
+import { hasRealWordTiming } from "@windows/desktop-lyric/utils";
 
 /** 复用已解析的歌词，仅把当前曲目的行文本交给系统画中画。 */
 export const pipContent = (
@@ -28,6 +29,13 @@ export const pipContent = (
         .trim(),
       translation: line.translatedLyric,
       roman: line.romanLyric ?? "",
+      words: hasRealWordTiming(line)
+        ? line.words.map(({ word, startTime, endTime }) => ({
+            text: word,
+            start: startTime,
+            end: endTime,
+          }))
+        : [],
     }))
     .filter((line) => line.text)
     .sort((a, b) => a.start - b.start)
@@ -42,6 +50,7 @@ export const pipContent = (
         start: line.start,
         end: line.end,
         primary,
+        words: line.words,
         rows: alternating
           ? primary === 0
             ? [line.text, next]
