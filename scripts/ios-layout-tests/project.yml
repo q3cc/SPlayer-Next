@@ -6,7 +6,7 @@ targets:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "16.0"
-    sources: [LayoutTests.swift]
+    sources: [LayoutTests.swift, PlaybackTests.swift]
     settings:
       GENERATE_INFOPLIST_FILE: YES
       CODE_SIGNING_ALLOWED: NO

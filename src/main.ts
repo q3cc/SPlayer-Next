@@ -95,7 +95,14 @@ const startApp = async (): Promise<void> => {
     setTimeout(removeSplash, SPLASH_ANIM_MS + 100);
   }
   // 初始化播放器与冷启动分发
-  bootstrapPlayback().catch(console.error);
+  bootstrapPlayback()
+    .then(async () => {
+      if (import.meta.env.VITE_MOBILE_PLAYBACK_TEST === "1") {
+        const { installPlaybackTest } = await import("./mobile/playbackTest");
+        await installPlaybackTest();
+      }
+    })
+    .catch(console.error);
   // 初始化快捷键
   useHotkeyStore()
     .init()
