@@ -4,7 +4,7 @@ import json
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 
 def main():
@@ -19,7 +19,8 @@ def main():
         ]
         if len(matches) != 1:
             raise RuntimeError(f"缺少唯一的桌面画中画截图：{prefix}")
-        with Image.open(root / matches[0]["exportedFileName"]) as image:
+        with Image.open(root / matches[0]["exportedFileName"]) as raw:
+            image = ImageOps.exif_transpose(raw)
             width, height = image.size
             if width <= height:
                 raise RuntimeError("此检查仅用于未拖动画中画的横屏 iPad 测试")
