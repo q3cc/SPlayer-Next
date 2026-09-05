@@ -52,7 +52,7 @@ describe("歌词画中画", () => {
       artist: "歌手",
       cover: "",
       offset: 250,
-      lines: [{ start: 1000, end: 3000, rows: ["第一句", "翻译"] }],
+      lines: [{ start: 1000, end: 3000, primary: 0, rows: ["第一句", "翻译"] }],
     });
   });
 
@@ -75,6 +75,69 @@ describe("歌词画中画", () => {
     const lines = pipContent(two, { doubleLine: true, showTranslation: true }).lines;
     expect(lines[0].rows).toEqual(["第一句", "第二句"]);
     expect(lines[1].rows).toEqual(["第二句"]);
+  });
+
+  it("双行上下轮流高亮，未唱行预告下一句", async () => {
+    const { pipContent } = await import("./lyricPip");
+    const lyric = ["一", "二", "三", "四"].map((word, index) => ({
+      ...value.lyric[0],
+      startTime: index * 4000,
+      endTime: index * 4000 + 3000,
+      translatedLyric: "",
+      words: [{ word, startTime: index * 4000, endTime: index * 4000 + 3000 }],
+    }));
+    const lines = pipContent(
+      { ...value, lyric },
+      { doubleLine: true, showTranslation: true },
+    ).lines;
+    expect(lines.map(({ rows, primary }) => ({ rows, primary }))).toEqual([
+      { rows: ["一", "二"], primary: 0 },
+      { rows: ["三", "二"], primary: 1 },
+      { rows: ["三", "四"], primary: 0 },
+      { rows: ["四"], primary: 0 },
+    ]);
+  });
+
+  it("连续进度每秒最多同步一次，暂停和强制拖动立即同步", async () => {
+    const { mobileLyricPip: pip } = await import("./lyricPip");
+    pip.configure(async () => value, vi.fn());
+    await pip.toggle();
+    mocks.events.get("visibility")?.({ active: true });
+    mocks.invoke.mockClear();
+    const status = {
+      state: "playing" as const,
+      position: 0,
+      duration: 60000,
+      volume: 1,
+      speed: 1,
+      isFinished: false,
+    };
+    const now = vi.spyOn(Date, "now");
+    for (let i = 0; i <= 10; i++) {
+      now.mockReturnValue(i * 100);
+      pip.sync({ ...status, position: i * 100 });
+      await Promise.resolve();
+    }
+    expect(mocks.invoke).toHaveBeenCalledTimes(2);
+    pip.sync({ ...status, position: 1000, state: "paused" });
+    await Promise.resolve();
+    expect(mocks.invoke).toHaveBeenCalledTimes(3);
+    pip.sync({ ...status, position: 1100, state: "paused" }, true);
+    await Promise.resolve();
+    expect(mocks.invoke).toHaveBeenCalledTimes(4);
+    now.mockRestore();
+  });
+
+  it("单双行默认值持久保存，重新读取后仍生效", async () => {
+    localStorage.removeItem("splayer.mobile.settings");
+    const { store } = await import("./shims/store");
+    store.clear();
+    expect(store.get("desktopLyric.doubleLine")).toBe(false);
+    store.set("desktopLyric.doubleLine", true);
+    vi.resetModules();
+    const { store: reloaded } = await import("./shims/store");
+    expect(reloaded.get("desktopLyric.doubleLine")).toBe(true);
+    reloaded.clear();
   });
 
   it("有音译和翻译时替代下一句，不混入第二句原文", async () => {

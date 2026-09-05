@@ -1,4 +1,5 @@
 import type { PlayerEvent } from "@shared/types/player";
+import { isIOS } from "@/utils/config";
 import { useMediaStore } from "@/stores/media";
 import { useStatusStore } from "@/stores/status";
 import { useFavorite } from "@/composables/useFavorite";
@@ -85,13 +86,14 @@ export const handleEvent = async (event: PlayerEvent): Promise<void> => {
       // seek 后丢弃旧位置，直到后端推送的位置到达 seek 目标附近
       if (!hasReachedSeekTarget(event.data.position)) break;
       const adjusted = playback.setCurrentTime(event.data.position);
-      status.position = adjusted;
+      const updateUI = !isIOS || !document.hidden;
+      if (updateUI) status.position = adjusted;
       if (event.data.duration > 0) {
         status.duration = event.data.duration;
         playback.setDuration(event.data.duration);
       }
       // 歌词索引叠加用户设置的偏移；进度条仍走 adjusted 不受影响
-      useMediaStore().updateLyricIndex(adjusted + status.lyricOffsetMs);
+      if (updateUI) useMediaStore().updateLyricIndex(adjusted + status.lyricOffsetMs);
       // AB 循环：到达 B 点 seek 回 A
       abLoop.checkLoop(adjusted);
       // 推进延时缓存调度

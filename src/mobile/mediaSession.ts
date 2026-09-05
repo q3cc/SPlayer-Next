@@ -139,6 +139,6 @@ export const mobileMediaSession = {
   },
   setPosition(value: number): void {
     position = value;
-    refresh();
+    if (store.get("media.dynamicLyrics")) refresh();
   },
 };

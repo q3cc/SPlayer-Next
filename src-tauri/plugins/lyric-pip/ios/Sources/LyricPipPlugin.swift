@@ -9,6 +9,7 @@ private struct LyricRow: Decodable {
   let start: Double
   let end: Double
   let rows: [String]
+  let primary: Int
 }
 
 private struct LyricContent: Decodable {
@@ -39,6 +40,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var sourceView: UIView?
   private var controller: AVPictureInPictureController?
   private var readiness: NSKeyValueObservation?
+  private var suspension: NSKeyValueObservation?
   private var startTimeout: DispatchWorkItem?
   private var pendingStart: Invoke?
   private var timer: Timer?
@@ -49,6 +51,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   private var speed = 1.0
   private var anchorTime = ProcessInfo.processInfo.systemUptime
   private var lastText: [String]?
+  private var lastPrimary = -1
   private var cachedFrame: CVPixelBuffer?
   private var lastFrameTime = -Double.infinity
   private var frameCount = 0
@@ -98,6 +101,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
         }
       }
       self.render()
+      self.updateTimer()
       invoke.resolve()
     }
   }
@@ -106,14 +110,15 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let next = try invoke.parseArgs(PlaybackAnchor.self)
     DispatchQueue.main.async {
       let delay = max(0, Date().timeIntervalSince1970 * 1000 - next.timestamp)
+      let playbackChanged = self.playing != next.playing || self.duration != next.duration
       self.position = next.position + (next.playing ? delay * next.speed : 0)
       self.duration = next.duration
       self.playing = next.playing
       self.speed = next.speed
       self.anchorTime = ProcessInfo.processInfo.systemUptime
-      self.controller?.invalidatePlaybackState()
-      self.updateTimer()
+      if playbackChanged { self.controller?.invalidatePlaybackState() }
       self.render()
+      self.updateTimer()
       invoke.resolve()
     }
   }
@@ -158,6 +163,12 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       }
       pip.canStartPictureInPictureAutomaticallyFromInline = false
       self.controller = pip
+      self.suspension = pip.observe(\.isPictureInPictureSuspended, options: [.new]) { [weak self] _, _ in
+        DispatchQueue.main.async {
+          self?.render(force: true)
+          self?.updateTimer()
+        }
+      }
       self.lastText = nil
       self.frameCount = 0
       self.lastFrameTime = -.infinity
@@ -194,18 +205,29 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     }
   }
 
-  /// 仅窗口启动中或可见时送帧；复用定时器，避免进度推送不断重置首帧重试。
+  /// 在下一句、当前句保留期结束或一秒保活时唤醒，避免固定每秒五次扫描歌词。
   private func updateTimer() {
-    guard controller?.isPictureInPictureActive == true || pendingStart != nil else {
-      timer?.invalidate()
-      timer = nil
+    timer?.invalidate()
+    timer = nil
+    guard (controller?.isPictureInPictureActive == true && controller?.isPictureInPictureSuspended == false) || pendingStart != nil else {
       return
     }
-    guard timer == nil else { return }
-    timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-      self?.render()
+    let now = ProcessInfo.processInfo.systemUptime
+    var delay = max(0.2, 1 - (now - lastFrameTime))
+    if playing && speed > 0, let content = content {
+      let time = currentPosition() + content.offset
+      if let next = content.lines.first(where: { $0.start > time }) {
+        delay = min(delay, max(0.02, (next.start - time) / (1000 * speed)))
+      }
+      if let current = content.lines.last(where: { $0.start <= time }), current.end + 3000 > time {
+        delay = min(delay, max(0.02, (current.end + 3000 - time) / (1000 * speed)))
+      }
     }
-    timer?.tolerance = 0.05
+    timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+      self?.render()
+      self?.updateTimer()
+    }
+    timer?.tolerance = 0.01
   }
 
   private func currentPosition() -> Double {
@@ -217,6 +239,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   /// 内容未变化时复用当前像素缓冲，以低频新时间戳重送，供画中画切换和暂停后恢复显示。
   private func render(force: Bool = false) {
     guard sourceView != nil else { return }
+    if pendingStart == nil && controller?.isPictureInPictureSuspended == true { return }
     let now = ProcessInfo.processInfo.systemUptime
     let needsFlush = displayLayer.status == .failed || displayLayer.requiresFlushToResumeDecoding
     if needsFlush {
@@ -230,10 +253,12 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     let title = content?.title.isEmpty == false ? content!.title : "SPlayer Next"
     let info = [title, content?.artist ?? ""].filter { !$0.isEmpty }.joined(separator: " - ")
     let text = active?.rows ?? [title, info]
-    if text != lastText || cachedFrame == nil {
-      guard let buffer = drawFrame(text) else { return }
+    let primary = active?.primary ?? 0
+    if text != lastText || primary != lastPrimary || cachedFrame == nil {
+      guard let buffer = drawFrame(text, primary: primary) else { return }
       cachedFrame = buffer
       lastText = text
+      lastPrimary = primary
     } else if !force && !needsFlush && now - lastFrameTime < 1 {
       return
     }
@@ -270,7 +295,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   /// 使用可共享的 IOSurface，并在送往系统显示层之前结束 CPU 写入锁。
-  private func drawFrame(_ text: [String]) -> CVPixelBuffer? {
+  private func drawFrame(_ text: [String], primary: Int) -> CVPixelBuffer? {
     var pixelBuffer: CVPixelBuffer?
     let attributes: [CFString: Any] = [
       kCVPixelBufferCGImageCompatibilityKey: true,
@@ -324,8 +349,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     paragraph.alignment = .left
     paragraph.lineBreakMode = .byTruncatingTail
     for i in 0..<text.count {
-      let weight: UIFont.Weight = i == 0 ? .semibold : .regular
-      let baseSize: CGFloat = i == 0 ? 28 : 20
+      let weight: UIFont.Weight = i == primary ? .semibold : .regular
+      let baseSize: CGFloat = text.count <= 2 ? 28 : (i == primary ? 28 : 20)
       let naturalWidth = (text[i] as NSString).size(withAttributes: [
         .font: UIFont.systemFont(ofSize: baseSize, weight: weight)
       ]).width
@@ -334,7 +359,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
         width: 464, height: 34)
       (text[i] as NSString).draw(in: rect, withAttributes: [
         .font: UIFont.systemFont(ofSize: size, weight: weight),
-        .foregroundColor: i == 0 ? UIColor.white : UIColor.lightGray,
+        .foregroundColor: i == primary ? UIColor(red: 1, green: 0.73, blue: 0.86, alpha: 1) : UIColor.white,
         .paragraphStyle: paragraph
       ])
     }
@@ -358,6 +383,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     startTimeout?.cancel()
     startTimeout = nil
     readiness = nil
+    suspension = nil
     timer?.invalidate()
     timer = nil
     controller?.delegate = nil
@@ -368,6 +394,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     sourceView = nil
     content = nil
     lastText = nil
+    lastPrimary = -1
     cachedFrame = nil
     coverTask?.cancel()
     coverTask = nil

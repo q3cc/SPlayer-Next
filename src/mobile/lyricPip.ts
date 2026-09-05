@@ -35,13 +35,18 @@ export const pipContent = (
       const extras = options.showTranslation
         ? [line.roman, line.translation].map((text) => text.trim()).filter(Boolean)
         : [];
+      const next = lines[index + 1]?.text;
+      const alternating = options.doubleLine && !extras.length && !!next;
+      const primary = alternating ? index % 2 : 0;
       return {
         start: line.start,
         end: line.end,
-        rows: [
-          line.text,
-          ...(extras.length ? extras : options.doubleLine ? [lines[index + 1]?.text ?? ""] : []),
-        ].filter(Boolean),
+        primary,
+        rows: alternating
+          ? primary === 0
+            ? [line.text, next]
+            : [next, line.text]
+          : [line.text, ...extras],
       };
     }),
 });
@@ -55,6 +60,7 @@ let listenersReady: Promise<unknown> | undefined;
 const visibilityListeners = new Set<(open: boolean) => void>();
 let pendingAnchor: (PlayerStatus & { timestamp: number }) | undefined;
 let syncing = false;
+let lastAnchor: (PlayerStatus & { timestamp: number }) | undefined;
 
 /** 合并尚未发送的进度，原生端阻塞时不积累 IPC 队列。 */
 const flushAnchor = async (): Promise<void> => {
@@ -92,9 +98,24 @@ export const mobileLyricPip = {
     visibilityListeners.add(callback);
     return () => visibilityListeners.delete(callback);
   },
-  sync(status: PlayerStatus): void {
+  sync(status: PlayerStatus, force = false): void {
     if (!active && !starting) return;
-    pendingAnchor = { ...status, timestamp: Date.now() };
+    const now = Date.now();
+    if (!force && lastAnchor) {
+      const elapsed = now - lastAnchor.timestamp;
+      const expected =
+        lastAnchor.position + (lastAnchor.state === "playing" ? elapsed * lastAnchor.speed : 0);
+      if (
+        elapsed < 1000 &&
+        status.state === lastAnchor.state &&
+        status.speed === lastAnchor.speed &&
+        status.duration === lastAnchor.duration &&
+        Math.abs(status.position - expected) < 250
+      )
+        return;
+    }
+    lastAnchor = { ...status, timestamp: now };
+    pendingAnchor = lastAnchor;
     void flushAnchor();
   },
   async update(): Promise<void> {
@@ -121,6 +142,7 @@ export const mobileLyricPip = {
             if (!active) {
               revision++;
               pendingAnchor = undefined;
+              lastAnchor = undefined;
             }
             visibilityListeners.forEach((listener) => listener(active));
           },

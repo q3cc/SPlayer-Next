@@ -1214,8 +1214,8 @@
       "description": "非当前行的基础透明度"
     },
     "lyricPipDoubleLine": {
-      "label": "双行歌词",
-      "description": "显示当前句和下一句。出现音译或翻译时，只显示当前句及其音译、翻译。"
+      "label": "默认显示双行歌词",
+      "description": "开启后上下两行轮流高亮，另一行预告下一句；关闭为单行。设置会保存并立即生效。有音译或翻译时显示当前句及附加歌词。"
     },
     "lyricPipShowTranslation": {
       "label": "显示音译和翻译",

@@ -24,6 +24,7 @@ let currentMeta: LoadOptions["meta"];
 let state: PlayerState = "idle";
 let fadeDuration = 0;
 let pitch = 0;
+let lastSystemPositionAt = -Infinity;
 
 const emit = (event: PlayerEvent): void => {
   mobileLyricPip.sync(status());
@@ -54,7 +55,12 @@ audio.addEventListener("pause", () => {
 audio.addEventListener("timeupdate", () => {
   mobileMediaSession.setPosition(positionMs());
   emit({ type: "position", data: { position: positionMs(), duration: durationMs() } });
-  if ("mediaSession" in navigator && durationMs() > 0) {
+  if (
+    "mediaSession" in navigator &&
+    durationMs() > 0 &&
+    performance.now() - lastSystemPositionAt >= 1000
+  ) {
+    lastSystemPositionAt = performance.now();
     try {
       navigator.mediaSession.setPositionState({
         duration: audio.duration,
@@ -72,7 +78,15 @@ audio.addEventListener("error", () => emit({ type: "sourceError" }));
 audio.addEventListener("ratechange", () => mobileLyricPip.sync(status()));
 audio.addEventListener("waiting", () => mobileLyricPip.sync({ ...status(), state: "paused" }));
 audio.addEventListener("playing", () => mobileLyricPip.sync(status()));
-audio.addEventListener("seeked", () => mobileLyricPip.sync(status()));
+audio.addEventListener("seeked", () => {
+  lastSystemPositionAt = -Infinity;
+  mobileLyricPip.sync(status(), true);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  emit({ type: "status", data: status() });
+  emit({ type: "position", data: { position: positionMs(), duration: durationMs() } });
+});
 
 const installMediaSession = (): void => {
   if (!("mediaSession" in navigator)) return;

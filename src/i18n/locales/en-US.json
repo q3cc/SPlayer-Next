@@ -1226,8 +1226,8 @@
       "description": "Base opacity for non-active lines"
     },
     "lyricPipDoubleLine": {
-      "label": "Two lyric lines",
-      "description": "Show the current and next lines. When romanization or translation is available, show it below the current line instead."
+      "label": "Use two lyric lines by default",
+      "description": "Alternate the highlighted line between the top and bottom, with the next line in the other slot. Turn off for one line. Saved immediately. Romanization and translation replace the preview when available."
     },
     "lyricPipShowTranslation": {
       "label": "Romanization and translation",
