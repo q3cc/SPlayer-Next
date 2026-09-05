@@ -7,7 +7,8 @@ let package = Package(
   products: [.library(name: "tauri-plugin-native-audio", type: .static, targets: ["tauri-plugin-native-audio"])],
   dependencies: [
     .package(name: "Tauri", path: "../.tauri/tauri-api"),
-    .package(url: "https://github.com/dimitris-c/AudioStreaming.git", revision: "cc972c0a001e401cba266d507f62f0eb7a1740b5")
+    // 1.3.0 支持系统 MP3/AAC/FLAC 解码，不依赖需要额外嵌入 IPA 的动态编解码框架。
+    .package(url: "https://github.com/dimitris-c/AudioStreaming.git", revision: "4b8bae96c2e624aa64f6e0ac361ee76a3374a641")
   ],
   targets: [.target(name: "tauri-plugin-native-audio", dependencies: [
     .byName(name: "Tauri"), .product(name: "AudioStreaming", package: "AudioStreaming")

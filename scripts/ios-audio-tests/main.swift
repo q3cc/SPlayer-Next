@@ -3,12 +3,12 @@ import Foundation
 
 /** 用确定性的正弦波离线渲染，检测实际输出而不是只核对节点参数。 */
 func render(frequency: Double = 1000, gain: Float = 0, preamp: Float = 0,
-            enabled: Bool = true, pitch: Float = 0) throws -> [Float] {
+            enabled: Bool = true, pitch: Float = 0, band: Int = 5) throws -> [Float] {
   let engine = AVAudioEngine()
   let source = AVAudioPlayerNode()
   let effects = AudioEffects()
   var bands = Array(repeating: Float(0), count: 10)
-  bands[5] = gain
+  bands[band] = gain
   effects.apply(EffectRequest(volume: 1, speed: 1, pitch: pitch, pitchSync: true,
     enabled: enabled, bands: bands, preamp: preamp))
   let format = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
@@ -77,4 +77,11 @@ let loweredHz = measuredFrequency(lowered)
 print("Pitch +12=\(raisedHz)Hz, -12=\(loweredHz)Hz")
 precondition(abs(raisedHz - 2000) < 50, "升八度没有实际生效")
 precondition(abs(loweredHz - 500) < 25, "降八度没有实际生效")
-print("PASS: 7 项原生音效输出检查")
+for (index, frequency) in [31.0, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000].enumerated() {
+  let baseline = try render(frequency: frequency)
+  let changed = try render(frequency: frequency, gain: 6, band: index)
+  let ratio = rms(changed) / rms(baseline)
+  print("Band \(index) \(frequency)Hz +6dB ratio=\(ratio)")
+  precondition((1.8...2.2).contains(ratio), "频段 \(frequency)Hz 增益错误")
+}
+print("PASS: 17 项原生音效输出检查")

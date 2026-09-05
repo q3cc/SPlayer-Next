@@ -152,7 +152,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
         self.loadTimeout?.cancel()
         player.stop()
       case "seek":
-        guard let ms = request.position, ms.isFinite, player.isSeekable else {
+        guard let ms = request.position, ms.isFinite, player.duration > 0 else {
           invoke.reject("当前音源暂不支持跳转"); return
         }
         player.seek(to: max(0, min(ms / 1000, player.duration)))
@@ -267,7 +267,7 @@ final class NativeAudioPlugin: Plugin, AudioPlayerDelegate {
     seek.isEnabled = true
     remoteTargets.append((seek, seek.addTarget { [weak self] event in
       guard let self = self, let event = event as? MPChangePlaybackPositionCommandEvent,
-            let player = self.player, player.isSeekable else { return .commandFailed }
+            let player = self.player, player.duration > 0 else { return .commandFailed }
       DispatchQueue.main.async { player.seek(to: event.positionTime); self.updatePosition() }
       return .success
     }))

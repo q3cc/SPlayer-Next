@@ -42,6 +42,14 @@ export const installPlaybackTest = async (): Promise<void> => {
     return element;
   };
   button("Play Senbonzakura test", async () => {
+    await settings.setSystem("player.equalizer.bands", [0, 0, 0, 0, 0, 6, 0, 0, 0, 0]);
+    await settings.setSystem("player.equalizer.preamp", -6);
+    await settings.setSystem("player.equalizer.enabled", true);
+    console.info("[playback-test] native-equalizer-enabled", {
+      frequency: 1000,
+      gain: 6,
+      preamp: -6,
+    });
     const result = await searchSongs("netease", "千本樱", 0, 10);
     console.info("[playback-test] search-results", result.items.length);
     let selected = false;
