@@ -12,6 +12,7 @@ interface SongUrlData {
   level?: string;
   format?: string;
   isFallback?: boolean;
+  isTrial?: boolean;
 }
 
 interface SongUrlResponse {
@@ -28,12 +29,14 @@ interface SongUrlResponse {
 export const resolveQQMusicUrl = async (
   track: Track,
   songLevel: QualityLevel,
+  allowTrial = false,
 ): Promise<QQMusicPlayUrlResult> => {
   try {
     const body = await qqmusicCall<SongUrlResponse>("song_url", {
       mid: track.id,
       mediaMid: track.mediaId,
       level: songLevel,
+      allowTrial,
     });
 
     const item = body?.data?.[0];
@@ -41,7 +44,7 @@ export const resolveQQMusicUrl = async (
       return {
         available: true,
         url: item.url,
-        isTrial: false,
+        isTrial: item.isTrial === true,
       };
     }
 

@@ -50,7 +50,7 @@ export const resolveDownloadSource = async (
   // 官方播放直链
   if (track.source === "qqmusic") {
     const resolved = await resolveQQMusicUrl(track, level);
-    if (resolved.available) return { url: resolved.url };
+    if (resolved.available && !resolved.isTrial) return { url: resolved.url };
   }
   if (track.source === "kugou") {
     const resolved = await resolveKugouUrl(track, level);

@@ -121,7 +121,12 @@ describe("iOS 检查当前仓库更新", () => {
     expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ type: "error" }));
     mocks.invoke.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("background"));
     await mobileUpdate.download();
-    expect(listener).toHaveBeenLastCalledWith(expect.objectContaining({ type: "downloaded" }));
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: "downloaded" }));
+    expect(listener).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: "error", stage: "share", message: "Error: background" }),
+    );
+    await mobileUpdate.install();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("plugin:ipa-update|share");
   });
 
   it.each([

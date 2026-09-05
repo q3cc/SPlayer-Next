@@ -27,6 +27,7 @@ let checkingChannel: string | undefined;
 let manualCheck = false;
 let selected: { url: string; size: number; digest?: string; meta: UpdateMeta } | undefined;
 let downloading = false;
+let sharing = false;
 
 /** 识别本仓库的 iOS 标签及正式、alpha、beta 版本。 */
 const versionParts = (version: string): number[] | null => {
@@ -227,11 +228,27 @@ export const mobileUpdate: UpdateApi = {
     }
   },
   async install() {
+    if (sharing) return;
+    sharing = true;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      await invoke("plugin:ipa-update|share");
+      console.info("[update] share-start");
+      await Promise.race([
+        invoke("plugin:ipa-update|share"),
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => reject(new Error("分享面板未响应，请返回前台后重试")), 10000);
+        }),
+      ]);
+      console.info("[update] share-presented");
     } catch (error) {
       // 保留 downloaded 状态，回到前台后仍可再次打开分享面板。
       console.warn("[update] IPA 已下载，请点击其他 App 打开", error);
+      listeners.forEach((listener) =>
+        listener({ type: "error", stage: "share", manual: true, message: String(error) }),
+      );
+    } finally {
+      clearTimeout(timeout);
+      sharing = false;
     }
   },
   openDownloadPage: async () => openUrl(downloadPage),

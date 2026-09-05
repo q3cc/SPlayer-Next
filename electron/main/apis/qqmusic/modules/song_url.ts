@@ -14,6 +14,7 @@ interface QualityCandidate {
   ext: string;
   level: string;
   label: string;
+  isTrial?: boolean;
 }
 
 const QQ_QUALITY_CANDIDATE_TEMPLATES: QualityCandidate[] = [
@@ -73,6 +74,10 @@ const songUrl: QMModule = async (params) => {
 
   const targetLevel = String(params.level || "hq");
   const candidates = getQualityCandidates(targetLevel);
+  // QQ 的试听是独立文件，不是把完整歌曲降到最低音质。
+  if (params.allowTrial === true) {
+    candidates.push({ prefix: "RS02", ext: ".mp3", level: "sq", label: "试听 MP3", isTrial: true });
+  }
   const filenames = candidates.map((c) => `${c.prefix}${fileBase}${c.ext}`);
 
   const cookies = getQQMusicCookies();
@@ -131,6 +136,17 @@ const songUrl: QMModule = async (params) => {
     });
 
     const json = (await res.json()) as VkeyResponse;
+    coreLog.info("[qm-song-url] 解析结果", {
+      status: res.status,
+      code: json.code,
+      moduleCode: json.req_0?.code,
+      allowTrial: params.allowTrial === true,
+      results: json.req_0?.data?.midurlinfo?.map((item) => ({
+        filename: item.filename,
+        result: item.result,
+        available: Boolean(item.purl),
+      })),
+    });
     const data = json.code === 0 && json.req_0?.code === 0 ? json.req_0.data : null;
     const infos = data?.midurlinfo ?? [];
     const sip =
@@ -163,6 +179,7 @@ const songUrl: QMModule = async (params) => {
             level: matched.cand.level,
             format: matched.cand.ext.replace(".", ""),
             isFallback: matched.cand.level !== targetLevel,
+            isTrial: matched.cand.isTrial === true,
           },
         ],
       };

@@ -54,7 +54,7 @@ export const useUpdateStore = defineStore("update", () => {
         toast.success(t(isIOS ? "update.iosReadyToast" : "update.readyToast"));
         break;
       case "error":
-        phase.value = "error";
+        if (event.stage !== "share") phase.value = "error";
         if (event.manual)
           toast.error(isIOS ? `${t("update.failed")}：${event.message}` : t("update.failed"));
         break;

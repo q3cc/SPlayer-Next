@@ -184,11 +184,14 @@ const resolveOnlineUrl = async (
   }
   if (track.source === "qqmusic" && !options.skipOfficialOnline) {
     try {
-      const resolved = await resolveQQMusicUrl(track, songLevel);
-      if (resolved.available) {
+      const resolved = await resolveQQMusicUrl(track, songLevel, settings.player.allowTrialPlay);
+      if (!resolved.available) {
+        officialErrorCode = resolved.errorCode;
+      } else if (!resolved.isTrial) {
         return { ok: true, url: resolved.url, isTrial: false, provider: "official" };
+      } else {
+        trialUrl = resolved.url;
       }
-      officialErrorCode = resolved.errorCode;
     } catch (err) {
       console.warn("[audio-source] official QQMusic URL resolve failed:", err);
       officialErrorCode = ErrorCode.URL_RESOLVE_FAILED;
