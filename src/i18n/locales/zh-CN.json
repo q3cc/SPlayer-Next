@@ -712,6 +712,7 @@
       "player": "播放设置",
       "lyric": "歌词设置",
       "externalLyric": "外部歌词",
+      "desktopLyric": "桌面歌词",
       "appearance": "外观设置",
       "hotkeys": "快捷键配置",
       "services": "网络与服务",
@@ -1214,16 +1215,25 @@
       "description": "非当前行的基础透明度"
     },
     "lyricPipDoubleLine": {
-      "label": "默认显示双行歌词",
-      "description": "开启后上下两行轮流高亮，另一行预告下一句；关闭为单行。设置会保存并立即生效。有音译或翻译时显示当前句及附加歌词。"
+      "label": "双行歌词",
+      "description": "上下交替，预告下一句。关闭为单行；有音译或翻译时显示附加歌词。"
     },
     "lyricPipShowTranslation": {
       "label": "显示音译和翻译",
-      "description": "在当前歌词下方显示已有的音译和翻译；关闭后仅显示原文。"
+      "description": "显示在当前句下方。"
     },
     "lyricPipEnabled": {
-      "label": "开启歌词小窗",
-      "description": "使用系统画中画显示歌词，可拖动和缩放。请先播放歌曲；关闭小窗不会停止音乐。"
+      "label": "开启桌面歌词",
+      "description": "先播放歌曲。小窗可拖动、缩放，关闭不影响播放。"
+    },
+    "lyricPipFontSize": { "label": "字号", "description": "长句超出宽度时省略。" },
+    "lyricPipPlayedColor": { "label": "高亮颜色", "description": "当前句或已唱部分。" },
+    "lyricPipUnplayedColor": { "label": "普通颜色", "description": "未唱部分和附加歌词。" },
+    "lyricPipPreview": {
+      "label": "效果预览",
+      "description": "随当前歌曲更新。",
+      "loading": "正在加载预览…",
+      "failed": "预览暂不可用"
     },
     "desktopLyricEnabled": {
       "label": "开启桌面歌词",

@@ -15,6 +15,7 @@ import otherCategory from "./categories/other";
 import AboutSettings from "@/components/settings/custom/AboutSettings.vue";
 import { isIOS } from "@/utils/config";
 import IconLucideInfo from "~icons/lucide/info";
+import LyricPipPreview from "@/components/settings/custom/LyricPipPreview.vue";
 
 const onlySections = (category: SettingCategory, ids: string[]): SettingCategory => ({
   ...category,
@@ -47,21 +48,43 @@ const mobileServices = onlySections(servicesCategory, ["network", "media"]);
 const mobileDownload = onlySections(downloadCategory, ["downloadGeneral"]);
 const mobileExternalLyric: SettingCategory = {
   ...onlySections(externalLyricCategory, ["desktopLyric"]),
+  id: "desktopLyric",
   sections: externalLyricCategory.sections
     ?.filter((section) => section.id === "desktopLyric")
     .map((section) => ({
       ...section,
-      items: section.items
-        .filter((item) =>
-          ["desktopLyricEnabled", "desktopLyricDoubleLine", "desktopLyricShowTranslation"].includes(
-            item.key,
-          ),
-        )
-        .map((item) => ({
-          ...item,
-          key: item.key.replace("desktopLyric", "lyricPip"),
-          ...(item.key === "desktopLyricDoubleLine" ? { defaultValue: false } : {}),
-        })),
+      items: [
+        {
+          key: "lyricPipPreview",
+          type: "custom" as const,
+          component: LyricPipPreview,
+          fullWidth: true,
+        },
+        ...section.items
+          .filter((item) =>
+            [
+              "desktopLyricEnabled",
+              "desktopLyricDoubleLine",
+              "desktopLyricShowTranslation",
+              "desktopLyricFontSize",
+              "desktopLyricPlayedColor",
+              "desktopLyricUnplayedColor",
+            ].includes(item.key),
+          )
+          .map((item) => ({
+            ...item,
+            key: item.key.replace("desktopLyric", "lyricPip"),
+            ...(item.key === "desktopLyricDoubleLine" ? { defaultValue: false } : {}),
+            ...(item.key === "desktopLyricFontSize"
+              ? {
+                  options: Array.from({ length: 25 }, (_, i) => ({
+                    value: i + 16,
+                    label: `${i + 16}`,
+                  })),
+                }
+              : {}),
+          })),
+      ],
     })),
 };
 

@@ -25,6 +25,26 @@ private struct LyricContent: Decodable {
   let lines: [LyricRow]
   let offset: Double
   let cover: String
+  let style: LyricStyle
+}
+
+private struct LyricColor: Decodable, Equatable {
+  let r: Double
+  let g: Double
+  let b: Double
+  let a: Double
+  var uiColor: UIColor { UIColor(red: r / 255, green: g / 255, blue: b / 255, alpha: a) }
+}
+
+private struct LyricStyle: Decodable, Equatable {
+  let fontSize: Double
+  let playedColor: LyricColor
+  let unplayedColor: LyricColor
+}
+
+private struct PreviewRequest: Decodable {
+  let content: LyricContent
+  let position: Double
 }
 
 /// 显示层作为视图主图层，随窗口尺寸变化同步布局。
@@ -82,6 +102,15 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   @objc public func update(_ invoke: Invoke) throws {
     let next = try invoke.parseArgs(LyricContent.self)
     DispatchQueue.main.async {
+      self.applyContent(next)
+      self.render()
+      self.updateTimer()
+      invoke.resolve()
+    }
+  }
+
+  private func applyContent(_ next: LyricContent) {
+      if self.content?.style != next.style { self.lastText = nil }
       self.content = next
       if self.coverURL != next.cover {
         self.coverTask?.cancel()
@@ -110,8 +139,46 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
           self.coverTask?.resume()
         }
       }
-      self.render()
-      self.updateTimer()
+  }
+
+  /// 设置页复用小窗的像素绘制，不启动系统画中画。
+  @objc public func preview(_ invoke: Invoke) throws {
+    let request = try invoke.parseArgs(PreviewRequest.self)
+    DispatchQueue.main.async {
+      self.applyContent(request.content)
+      let time = request.position + request.content.offset
+      let row = request.content.lines.last(where: { $0.start <= time })
+      let active = row.flatMap { time < $0.end + 3000 ? $0 : nil }
+      let title = request.content.title.isEmpty ? "SPlayer Next" : request.content.title
+      guard let buffer = self.drawFrame(active?.rows ?? [title, request.content.artist],
+        primary: active?.primary ?? 0, angle: CGFloat(request.position / 20000 * 2 * .pi),
+        words: active?.words ?? [], time: time) else {
+        invoke.reject("预览绘制失败")
+        return
+      }
+      CVPixelBufferLockBaseAddress(buffer, .readOnly)
+      defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+      let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: 640, height: 160,
+        bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+      guard let image = context?.makeImage(), let data = UIImage(cgImage: image).pngData() else {
+        invoke.reject("预览图片生成失败")
+        return
+      }
+      invoke.resolve(["image": "data:image/png;base64," + data.base64EncodedString()])
+    }
+  }
+
+  @objc public func discard(_ invoke: Invoke) {
+    DispatchQueue.main.async {
+      if self.controller == nil && self.pendingStart == nil {
+        self.coverTask?.cancel()
+        self.coverTask = nil
+        self.coverURL = ""
+        self.coverImage = nil
+        self.cachedFrame = nil
+      }
       invoke.resolve()
     }
   }
@@ -161,7 +228,7 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       view.isUserInteractionEnabled = false
       view.autoresizingMask = [.flexibleLeftMargin, .flexibleTopMargin]
       self.displayLayer = view.layer as! AVSampleBufferDisplayLayer
-      self.displayLayer.frame = view.bounds
+      // 主图层随视图布局；设置其 frame 会把整个视频源移到左上角。
       self.displayLayer.videoGravity = .resizeAspect
       parent.addSubview(view)
       self.sourceView = view
@@ -381,17 +448,15 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
     paragraph.lineBreakMode = .byTruncatingTail
     for i in 0..<text.count {
       let weight: UIFont.Weight = i == primary ? .semibold : .regular
-      let baseSize: CGFloat = text.count <= 2 ? 28 : (i == primary ? 28 : 20)
-      let naturalWidth = (text[i] as NSString).size(withAttributes: [
-        .font: UIFont.systemFont(ofSize: baseSize, weight: weight)
-      ]).width
-      let size = max(16, min(baseSize, baseSize * 464 / max(1, naturalWidth)))
-      let rect = CGRect(x: 152, y: (160 - CGFloat(text.count) * 34) / 2 + CGFloat(i) * 34,
-        width: 464, height: 34)
-      let highlight = UIColor(red: 1, green: 0.73, blue: 0.86, alpha: 1)
+      let fontSize = CGFloat(content?.style.fontSize ?? 24)
+      let size = text.count <= 2 || i == primary ? fontSize : fontSize * 0.72
+      let lineHeight = max(34, fontSize * 1.2)
+      let rect = CGRect(x: 152, y: (160 - CGFloat(text.count) * lineHeight) / 2 + CGFloat(i) * lineHeight,
+        width: 464, height: lineHeight)
+      let highlight = content?.style.playedColor.uiColor ?? UIColor.white
       var attributes: [NSAttributedString.Key: Any] = [
         .font: UIFont.systemFont(ofSize: size, weight: weight),
-        .foregroundColor: i == primary && words.isEmpty ? highlight : UIColor.white,
+        .foregroundColor: i == primary && words.isEmpty ? highlight : (content?.style.unplayedColor.uiColor ?? UIColor.white),
         .paragraphStyle: paragraph
       ]
       (text[i] as NSString).draw(in: rect, withAttributes: attributes)
@@ -467,6 +532,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
   }
 
   func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
+    // 保留视频源供系统读取，但把“正在画中画播放”的占位层放到网页后面。
+    if let view = sourceView { view.superview?.sendSubviewToBack(view) }
     startTimeout?.cancel()
     startTimeout = nil
     pendingStart?.resolve()

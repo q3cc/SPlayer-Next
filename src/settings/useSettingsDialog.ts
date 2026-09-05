@@ -1,5 +1,6 @@
 import { settingsSchema } from "@/settings/schema";
 import { useStatusStore } from "@/stores/status";
+import { isIOS } from "@/utils/config";
 
 const open = ref(false);
 const initialCategory = ref(settingsSchema[0].id);
@@ -21,6 +22,7 @@ export const useSettingsDialog = () => ({
    */
   show: (category?: string, highlight?: string) => {
     initialCategory.value = category ?? (useStatusStore().settingsCategory || settingsSchema[0].id);
+    if (isIOS && initialCategory.value === "externalLyric") initialCategory.value = "desktopLyric";
     initialHighlight.value = highlight;
     open.value = true;
   },

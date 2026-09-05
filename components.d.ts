@@ -182,6 +182,7 @@ declare module 'vue' {
     LoginDialog: typeof import('./src/components/modals/LoginDialog.vue')['default']
     LyricActions: typeof import('./src/components/player/FullPlayer/LyricActions.vue')['default']
     LyricFormatOrderConfig: typeof import('./src/components/settings/custom/LyricFormatOrderConfig.vue')['default']
+    LyricPipPreview: typeof import('./src/components/settings/custom/LyricPipPreview.vue')['default']
     Lyrics: typeof import('./src/components/player/Lyrics/index.vue')['default']
     LyricSourceOrderConfig: typeof import('./src/components/settings/custom/LyricSourceOrderConfig.vue')['default']
     McpConfigDialog: typeof import('./src/components/settings/custom/McpConfigDialog.vue')['default']

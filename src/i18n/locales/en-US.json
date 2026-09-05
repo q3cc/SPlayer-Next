@@ -724,6 +724,7 @@
       "player": "Player",
       "lyric": "Lyrics",
       "externalLyric": "External Lyrics",
+      "desktopLyric": "Desktop Lyric",
       "appearance": "Appearance",
       "hotkeys": "Hotkey Settings",
       "services": "Services",
@@ -1226,16 +1227,31 @@
       "description": "Base opacity for non-active lines"
     },
     "lyricPipDoubleLine": {
-      "label": "Use two lyric lines by default",
-      "description": "Alternate the highlighted line between the top and bottom, with the next line in the other slot. Turn off for one line. Saved immediately. Romanization and translation replace the preview when available."
+      "label": "Two lyric lines",
+      "description": "Alternate rows and preview the next line. Turn off for one line. Romanization and translation replace the next line when available."
     },
     "lyricPipShowTranslation": {
       "label": "Romanization and translation",
-      "description": "Show available romanization and translation below the current lyric. Turn off to show only original lyrics."
+      "description": "Show below the current line."
     },
     "lyricPipEnabled": {
-      "label": "Lyrics in Picture in Picture",
-      "description": "Show lyrics in a movable, resizable system window. Play a song first. Closing the window keeps music playing."
+      "label": "Enable Desktop Lyric",
+      "description": "Play a song first. Move or resize the window; closing it keeps music playing."
+    },
+    "lyricPipFontSize": { "label": "Font size", "description": "Long lines are truncated to fit." },
+    "lyricPipPlayedColor": {
+      "label": "Highlight color",
+      "description": "The current line or sung words."
+    },
+    "lyricPipUnplayedColor": {
+      "label": "Text color",
+      "description": "Upcoming words and extra lyrics."
+    },
+    "lyricPipPreview": {
+      "label": "Preview",
+      "description": "Follows the current song.",
+      "loading": "Loading preview…",
+      "failed": "Preview unavailable"
     },
     "desktopLyricEnabled": {
       "label": "Enable Desktop Lyric",

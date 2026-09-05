@@ -52,8 +52,48 @@ describe("歌词画中画", () => {
       artist: "歌手",
       cover: "",
       offset: 250,
+      style: {
+        fontSize: 24,
+        playedColor: { r: 254, g: 121, b: 113, a: 1 },
+        unplayedColor: { r: 255, g: 255, b: 255, a: 1 },
+      },
       lines: [{ start: 1000, end: 3000, primary: 0, words: [], rows: ["第一句", "翻译"] }],
     });
+  });
+
+  it("字号和颜色传给原生绘制，兼容 RGB 和 HEX 配置", async () => {
+    const { pipContent } = await import("./lyricPip");
+    expect(
+      pipContent(value, {
+        doubleLine: false,
+        showTranslation: true,
+        fontSize: 36,
+        playedColor: "#00ff00",
+        unplayedColor: "rgb(12, 34, 56)",
+      }).style,
+    ).toEqual({
+      fontSize: 36,
+      playedColor: { r: 0, g: 255, b: 0, a: 1 },
+      unplayedColor: { r: 12, g: 34, b: 56, a: 1 },
+    });
+  });
+
+  it("设置预览不打开画中画，释放预览不停止播放", async () => {
+    const { mobileLyricPip: pip } = await import("./lyricPip");
+    pip.configure(async () => value, vi.fn());
+    mocks.invoke.mockResolvedValue({ image: "data:image/png;base64,test" });
+    expect(await pip.preview()).toBe("data:image/png;base64,test");
+    expect(mocks.invoke).toHaveBeenCalledWith(
+      "plugin:lyric-pip|preview",
+      expect.objectContaining({ position: 1500 }),
+    );
+    await pip.releasePreview();
+    expect(mocks.invoke).toHaveBeenLastCalledWith("plugin:lyric-pip|discard");
+    expect(
+      mocks.invoke.mock.calls.some(
+        ([command]) => command.endsWith("|start") || command.endsWith("|stop"),
+      ),
+    ).toBe(false);
   });
 
   it("保留真实逐字时间轴，单行双行使用同一套原始时间", async () => {

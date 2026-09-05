@@ -5,6 +5,8 @@ fn main() {
         "update",
         "sync",
         "status",
+        "preview",
+        "discard",
         "register_listener",
         "remove_listener",
     ])

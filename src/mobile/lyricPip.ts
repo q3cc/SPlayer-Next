@@ -5,11 +5,13 @@ import { toast } from "@/composables/useToast";
 import { store } from "./shims/store";
 import type { SystemConfig } from "@shared/types/settings";
 import { hasRealWordTiming } from "@windows/desktop-lyric/utils";
+import { colord } from "colord";
 
 /** 复用已解析的歌词，仅把当前曲目的行文本交给系统画中画。 */
 export const pipContent = (
   value: NowPlayingSnapshot,
-  options: Pick<SystemConfig["desktopLyric"], "doubleLine" | "showTranslation"> = {
+  options: Pick<SystemConfig["desktopLyric"], "doubleLine" | "showTranslation"> &
+    Partial<Pick<SystemConfig["desktopLyric"], "fontSize" | "playedColor" | "unplayedColor">> = {
     doubleLine: false,
     showTranslation: true,
   },
@@ -18,6 +20,11 @@ export const pipContent = (
   artist: value.track?.artists.map((artist) => artist.name).join(" / ") ?? "",
   cover: value.track?.cover ?? "",
   offset: value.lyricOffsetMs,
+  style: {
+    fontSize: Math.max(16, Math.min(40, options.fontSize ?? 24)),
+    playedColor: colord(options.playedColor ?? "rgb(254, 121, 113)").toRgb(),
+    unplayedColor: colord(options.unplayedColor ?? "rgb(255, 255, 255)").toRgb(),
+  },
   lines: value.lyric
     .filter((line) => !line.isBG)
     .map((line) => ({
@@ -95,6 +102,18 @@ const flushAnchor = async (): Promise<void> => {
 };
 
 export const mobileLyricPip = {
+  async preview(): Promise<string> {
+    const value = await snapshot?.();
+    if (!value) return "";
+    const result = await invoke<{ image: string }>("plugin:lyric-pip|preview", {
+      content: pipContent(value, store.get("desktopLyric")),
+      position: value.position,
+    });
+    return result.image;
+  },
+  async releasePreview(): Promise<void> {
+    await invoke("plugin:lyric-pip|discard");
+  },
   configure(
     getSnapshot: () => Promise<NowPlayingSnapshot>,
     onPlayback: (playing: boolean) => void,
