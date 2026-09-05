@@ -19,6 +19,7 @@ import { mobilePlaylist } from "./playlist";
 import { mobileProviders } from "./providers";
 import { mobileStats } from "./stats";
 import { mobileMediaSession } from "./mediaSession";
+import { mobileLyricPip } from "./lyricPip";
 
 let playerPromise: Promise<PlayerApi> | undefined;
 const playerEventListeners = new Set<(event: PlayerEvent) => void>();
@@ -232,6 +233,10 @@ const snapshot = async (): Promise<NowPlayingSnapshot> => {
 
 let hotkeys: HotkeyConfig = structuredClone(defaultHotkeyConfig);
 
+mobileLyricPip.configure(snapshot, (playing) => {
+  void loadPlayer().then((player) => player.dispatch(playing ? "play" : "pause"));
+});
+
 const api = {
   config: {
     get: async (key: string) => store.get(key as never),
@@ -332,10 +337,10 @@ const api = {
   library: mobileLibrary,
   playlist: mobilePlaylist,
   window: {
-    toggleDesktopLyric: async () => undefined,
-    closeDesktopLyric: async () => undefined,
-    isDesktopLyricOpen: async () => false,
-    onDesktopLyricVisibilityChange: unsubscribe,
+    toggleDesktopLyric: mobileLyricPip.toggle,
+    closeDesktopLyric: mobileLyricPip.close,
+    isDesktopLyricOpen: mobileLyricPip.isOpen,
+    onDesktopLyricVisibilityChange: mobileLyricPip.onVisibility,
     toggleDynamicIsland: async () => undefined,
     closeDynamicIsland: async () => undefined,
     isDynamicIslandOpen: async () => false,
@@ -449,6 +454,9 @@ const api = {
     update: (value: NowPlayingUpdatePayload) => {
       const changed = value.track?.id !== nowPlaying.track?.id;
       nowPlaying = value;
+      void mobileLyricPip
+        .update()
+        .catch((error) => console.warn("[lyric-pip] 歌词同步失败", error));
       mobileMediaSession.setLyrics(
         value,
         value.track ? (lyricOffsets.get(value.track.id) ?? 0) : 0,
@@ -459,6 +467,9 @@ const api = {
     requestSnapshot: snapshot,
     setLyricOffset: (id: string, offset: number) => {
       lyricOffsets.set(id, offset);
+      void mobileLyricPip
+        .update()
+        .catch((error) => console.warn("[lyric-pip] 偏移同步失败", error));
       mobileMediaSession.setOffset(id, offset);
       offsetListeners.forEach((listener) => listener({ trackId: id, offsetMs: offset }));
     },

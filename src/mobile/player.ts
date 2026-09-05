@@ -11,6 +11,7 @@ import type {
 } from "@shared/types/player";
 import { resolveMobileAudioSource } from "./library";
 import { mobileMediaSession } from "./mediaSession";
+import { mobileLyricPip } from "./lyricPip";
 
 type PlayerListener = (event: PlayerEvent) => void;
 
@@ -25,6 +26,7 @@ let fadeDuration = 0;
 let pitch = 0;
 
 const emit = (event: PlayerEvent): void => {
+  mobileLyricPip.sync(status());
   for (const listener of listeners) listener(event);
 };
 
@@ -67,6 +69,10 @@ audio.addEventListener("ended", () => {
   emit({ type: "ended" });
 });
 audio.addEventListener("error", () => emit({ type: "sourceError" }));
+audio.addEventListener("ratechange", () => mobileLyricPip.sync(status()));
+audio.addEventListener("waiting", () => mobileLyricPip.sync({ ...status(), state: "paused" }));
+audio.addEventListener("playing", () => mobileLyricPip.sync(status()));
+audio.addEventListener("seeked", () => mobileLyricPip.sync(status()));
 
 const installMediaSession = (): void => {
   if (!("mediaSession" in navigator)) return;
@@ -185,6 +191,7 @@ export const mobilePlayer: PlayerApi = {
     audio.currentTime = 0;
     state = "stopped";
     mobileMediaSession.setPosition(0);
+    mobileLyricPip.sync(status());
     return ok();
   },
   seek: async (position) => {

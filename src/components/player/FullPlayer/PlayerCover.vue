@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMediaStore } from "@/stores/media";
 import { useStatusStore } from "@/stores/status";
+import { originalArtwork } from "@shared/utils/artwork";
 
 withDefaults(defineProps<{ fullscreen?: boolean }>(), { fullscreen: false });
 
@@ -17,7 +18,9 @@ const hdCache = shallowRef<{ id: string; data: string } | null>(null);
 const coverSrc = computed(() =>
   hdCache.value && hdCache.value.id === displayTrack.value?.id
     ? hdCache.value.data
-    : displayTrack.value?.coverOriginal || displayTrack.value?.cover,
+    : displayTrack.value
+      ? originalArtwork(displayTrack.value)
+      : undefined,
 );
 
 watchEffect(async () => {

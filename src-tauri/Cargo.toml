@@ -22,6 +22,7 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
+tauri-plugin-lyric-pip = { path = "plugins/lyric-pip" }
 tauri-plugin-opener = "2"
 tauri-plugin-os = "2"
 tauri-plugin-store = "2"

@@ -1213,6 +1213,10 @@
       "label": "非激活行透明度",
       "description": "非当前行的基础透明度"
     },
+    "lyricPipEnabled": {
+      "label": "开启歌词小窗",
+      "description": "使用系统画中画显示歌词，可拖动和缩放。请先播放歌曲；关闭小窗不会停止音乐。"
+    },
     "desktopLyricEnabled": {
       "label": "开启桌面歌词",
       "description": "在桌面显示一个独立的歌词悬浮窗口"

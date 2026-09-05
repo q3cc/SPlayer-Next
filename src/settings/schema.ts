@@ -45,13 +45,24 @@ const mobilePlayer: SettingCategory = {
 };
 const mobileServices = onlySections(servicesCategory, ["network", "media"]);
 const mobileDownload = onlySections(downloadCategory, ["downloadGeneral"]);
+const mobileExternalLyric: SettingCategory = {
+  ...onlySections(externalLyricCategory, ["desktopLyric"]),
+  sections: externalLyricCategory.sections
+    ?.filter((section) => section.id === "desktopLyric")
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .filter((item) => item.key === "desktopLyricEnabled")
+        .map((item) => ({ ...item, key: "lyricPipEnabled" })),
+    })),
+};
 
 export const settingsSchema: SettingCategory[] = [
   isIOS ? mobileGeneral : generalCategory,
   isIOS ? mobileAppearance : appearanceCategory,
   isIOS ? mobilePlayer : playerCategory,
   lyricCategory,
-  ...(isIOS ? [] : [externalLyricCategory, hotkeysCategory]),
+  ...(isIOS ? [mobileExternalLyric] : [externalLyricCategory, hotkeysCategory]),
   isIOS ? mobileServices : servicesCategory,
   ...(isIOS ? [] : [aiIntegrationCategory]),
   mediaSourceCategory,

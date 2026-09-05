@@ -1,0 +1,3 @@
+[default]
+description = "允许主窗口控制歌词画中画并接收播放事件"
+permissions = ["allow-start", "allow-stop", "allow-update", "allow-sync", "allow-status", "allow-register-listener", "allow-remove-listener"]

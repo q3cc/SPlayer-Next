@@ -71,11 +71,11 @@ describe("系统高清封面", () => {
     coverOriginal: "https://p1.music.126.net/album.jpg?param=1024y1024",
   };
 
-  it("先显示缩略图，600 像素图片加载成功后更新系统封面，不修改曲目", () => {
+  it("先显示缩略图，原图加载成功后更新系统封面，不修改曲目", () => {
     mobileMediaSession.setTrack(song);
     expect(navigator.mediaSession.metadata?.artwork).toEqual([{ src: song.cover }]);
     const image = ArtworkImage.instances[0];
-    expect(image.src).toBe("https://p1.music.126.net/album.jpg?param=600y600");
+    expect(image.src).toBe("https://p1.music.126.net/album.jpg");
     image.onload?.();
     expect(navigator.mediaSession.metadata?.artwork).toEqual([
       { src: image.src, sizes: "600x600" },
@@ -119,6 +119,21 @@ describe("系统高清封面", () => {
   it("其他来源复用原图地址，不添加网易云尺寸参数", () => {
     const original = "https://example.com/original.jpg?signature=test";
     mobileMediaSession.setTrack({ ...track, coverOriginal: original });
+    expect(ArtworkImage.instances[0].src).toBe(original);
+  });
+
+  it("没有单独原图地址时移除网易云缩放参数，保留其他查询参数", () => {
+    mobileMediaSession.setTrack({
+      ...song,
+      coverOriginal: undefined,
+      cover: "https://p1.music.126.net/a.jpg?param=300y300&v=2",
+    });
+    expect(ArtworkImage.instances[0].src).toBe("https://p1.music.126.net/a.jpg?v=2");
+  });
+
+  it("不改写伪装为网易云的第三方地址", () => {
+    const original = "https://music.126.net.example.com/a.jpg?param=300y300&signature=test";
+    mobileMediaSession.setTrack({ ...song, coverOriginal: original });
     expect(ArtworkImage.instances[0].src).toBe(original);
   });
 });

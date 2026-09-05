@@ -1,6 +1,7 @@
 import type { NowPlayingUpdatePayload } from "@shared/types/nowPlaying";
 import type { Track } from "@shared/types/player";
 import { findLyricIndex } from "@shared/utils/lyric";
+import { originalArtwork } from "@shared/utils/artwork";
 import { store } from "./shims/store";
 
 let track: Track | null = null;
@@ -26,20 +27,9 @@ const clearArtwork = (): void => {
   artworkSize = "";
 };
 
-/** 复用曲目的原图地址，网易云使用 CDN 的 600 像素版本，失败仍显示原缩略图。 */
+/** 系统播放卡片优先原图，失败仍显示原缩略图，仅保留当前歌曲的一次加载。 */
 const prepareArtwork = (value: Track): void => {
-  let candidate = value.coverOriginal || value.cover || "";
-  if (value.source === "netease" && candidate) {
-    try {
-      const url = new URL(candidate);
-      if (/^https?:$/.test(url.protocol) && /(^|\.)music\.126\.net$/.test(url.hostname)) {
-        url.searchParams.set("param", "600y600");
-        candidate = url.href;
-      }
-    } catch {
-      // 非远程封面继续使用原始地址，不猜测服务端的缩放参数。
-    }
-  }
+  const candidate = originalArtwork(value);
   const key = JSON.stringify([value.source, value.id, value.cover, candidate]);
   if (key === artworkKey) return;
   clearArtwork();

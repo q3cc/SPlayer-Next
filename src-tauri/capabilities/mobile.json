@@ -8,6 +8,7 @@
     "core:default",
     "deep-link:default",
     "dialog:default",
+    "lyric-pip:default",
     "fs:default",
     "fs:allow-appcache-read-recursive",
     "fs:allow-appcache-write-recursive",

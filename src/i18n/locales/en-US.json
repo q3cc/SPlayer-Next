@@ -1225,6 +1225,10 @@
       "label": "Inactive Opacity",
       "description": "Base opacity for non-active lines"
     },
+    "lyricPipEnabled": {
+      "label": "Lyrics in Picture in Picture",
+      "description": "Show lyrics in a movable, resizable system window. Play a song first. Closing the window keeps music playing."
+    },
     "desktopLyricEnabled": {
       "label": "Enable Desktop Lyric",
       "description": "Show a floating lyric window on desktop"
