@@ -27,6 +27,7 @@ import {
 
 /** 防止 ended 事件重入 */
 let endedGuard = false;
+let lastBackgroundCheckpointAt = -Infinity;
 
 /** 按当前播放模式结算并进入下一步 */
 const finishCurrentTrack = async (): Promise<void> => {
@@ -87,7 +88,12 @@ export const handleEvent = async (event: PlayerEvent): Promise<void> => {
       if (!hasReachedSeekTarget(event.data.position)) break;
       const adjusted = playback.setCurrentTime(event.data.position);
       const updateUI = !isIOS || !document.hidden;
-      if (updateUI) status.position = adjusted;
+      // 后台保留低频断点存储，避免系统终止应用后回到进入后台前的位置。
+      const now = performance.now();
+      if (updateUI || now - lastBackgroundCheckpointAt >= 5000) {
+        status.position = adjusted;
+        lastBackgroundCheckpointAt = now;
+      }
       if (event.data.duration > 0) {
         status.duration = event.data.duration;
         playback.setDuration(event.data.duration);
