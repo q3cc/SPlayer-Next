@@ -1,3 +1,4 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 /**
  * 歌单详情
  * 使用 c.y.qq.com 的 GET 接口（不走 musicu.fcg）
@@ -51,7 +52,7 @@ const songList: QMModule = async (params) => {
   const { id } = params;
 
   const url = `${SONGLIST_URL}&disstid=${encodeURIComponent(String(id ?? ""))}`;
-  const res = await fetch(url, {
+  const res = await fetchWithProxy(url, {
     headers: { ...QM_HEADERS, Referer: "https://y.qq.com/" },
     signal: AbortSignal.timeout(8000),
   });

@@ -42,8 +42,9 @@ export const fetchKugouLoginStatus = async (): Promise<PlatformProfile | null> =
   try {
     const result = await kugouCall<UserDetailResponse>("user_detail", { timestamp: Date.now() });
     return result.loggedIn ? (result.profile ?? null) : null;
-  } catch {
-    return null;
+  } catch (error) {
+    console.warn("[kugou] fetch login status failed:", error);
+    throw error;
   }
 };
 

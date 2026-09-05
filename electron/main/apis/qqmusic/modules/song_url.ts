@@ -1,9 +1,9 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 /**
  * QM 单曲播放链接解析模块
  * 支持微信扫码与 QQ 扫码凭证的直链解析及多音质降级
  */
 
-import { randomUUID } from "node:crypto";
 import { getQQMusicCookies, getQQMusicUin } from "../core/request";
 import { sessionToCookieHeader } from "../core/credential";
 import { coreLog } from "@main/utils/logger";
@@ -80,7 +80,7 @@ const songUrl: QMModule = async (params) => {
   const musickey = cookies.qm_keyst || cookies.qqmusic_key || "";
   const cookieStr = sessionToCookieHeader(cookies);
   const gtk = hash33(musickey, 5381);
-  const guid = randomUUID().replace(/-/g, "");
+  const guid = globalThis.crypto.randomUUID().replace(/-/g, "");
 
   coreLog.debug("[qm-song-url] 发起直链解析:", mid, targetLevel, {
     uin,
@@ -117,7 +117,7 @@ const songUrl: QMModule = async (params) => {
   };
 
   try {
-    const res = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+    const res = await fetchWithProxy("https://u.y.qq.com/cgi-bin/musicu.fcg", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

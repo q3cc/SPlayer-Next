@@ -48,6 +48,10 @@ private struct PreviewRequest: Decodable {
   let playing: Bool
 }
 
+private struct KeepAwakeRequest: Decodable {
+  let enabled: Bool
+}
+
 /// 显示层作为视图主图层，随窗口尺寸变化同步布局。
 private class LyricVideoView: UIView {
   override class var layerClass: AnyClass { AVSampleBufferDisplayLayer.self }
@@ -98,6 +102,14 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
 
   @objc public func status(_ invoke: Invoke) {
     invoke.resolve(["active": controller?.isPictureInPictureActive ?? false])
+  }
+
+  @objc public func keepawake(_ invoke: Invoke) throws {
+    let request = try invoke.parseArgs(KeepAwakeRequest.self)
+    DispatchQueue.main.async {
+      UIApplication.shared.isIdleTimerDisabled = request.enabled
+      invoke.resolve()
+    }
   }
 
   @objc public func update(_ invoke: Invoke) throws {
@@ -241,7 +253,8 @@ class LyricPipPlugin: Plugin, AVPictureInPictureControllerDelegate,
       self.displayLayer = view.layer as! AVSampleBufferDisplayLayer
       // 主图层随视图布局；设置其 frame 会把整个视频源移到左上角。
       self.displayLayer.videoGravity = .resizeAspect
-      parent.addSubview(view)
+      // 视频源始终置于网页后方，避免启动动画或鼠标悬浮时露出内联占位控件。
+      parent.insertSubview(view, at: 0)
       self.sourceView = view
       let source = AVPictureInPictureController.ContentSource(
         sampleBufferDisplayLayer: self.displayLayer, playbackDelegate: self)

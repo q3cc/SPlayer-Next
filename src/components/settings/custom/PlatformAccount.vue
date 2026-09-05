@@ -23,6 +23,7 @@ const qrModalOpen = ref(false);
 const cookieSubmitting = ref(false);
 const manualCookie = ref("");
 const selectedQrKey = ref<string>("");
+let profileRequest = 0;
 
 const qrDropdownItems = computed<DropdownMenuItem[]>(() => {
   if (!adapter.value.qrLoginOptions) return [];
@@ -69,11 +70,17 @@ watch(cookieModalOpen, (val) => {
 
 /** 刷新登录状态并同步 Store */
 const refresh = async (): Promise<void> => {
+  const request = ++profileRequest;
   const latest = await adapter.value.fetchProfile();
+  if (request !== profileRequest) return;
   dataStore.setPlatformProfile(props.platform, latest);
 };
 
-onMounted(refresh);
+onMounted(() => {
+  void refresh().catch((error) =>
+    console.warn("[platform-login] 资料暂不可用，保留已保存的登录态", error),
+  );
+});
 
 /** 发起网页登录 */
 const handleLogin = async (): Promise<void> => {
@@ -103,6 +110,7 @@ const handleLogin = async (): Promise<void> => {
 
 /** 断开连接 / 登出 */
 const handleDisconnect = async (): Promise<void> => {
+  profileRequest++;
   confirmOpen.value = false;
   await adapter.value.logout();
   dataStore.clearPlatformProfile(props.platform);
@@ -145,7 +153,13 @@ const handleManualCookieSubmit = async (): Promise<void> => {
  * 二维码登录成功回调
  */
 const handleQrSuccess = async (): Promise<void> => {
-  await refresh();
+  try {
+    await refresh();
+  } catch (error) {
+    console.warn("[platform-login] 已获得登录凭据，资料请求失败", error);
+    toast.error(t("settings.platformLogin.toast.loginFailed", { name: platformName.value }));
+    return;
+  }
   if (!profile.value) {
     toast.error(t("settings.platformLogin.toast.loginFailed", { name: platformName.value }));
     return;

@@ -71,7 +71,7 @@ export const fetchQQMusicLoginStatus = async (): Promise<PlatformProfile | null>
     return null;
   } catch (err) {
     console.warn("[qqmusic] fetch login status failed:", err);
-    return null;
+    throw err;
   }
 };
 

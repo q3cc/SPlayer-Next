@@ -47,6 +47,7 @@ export const fetchWithProxy = async (
   const url = requestUrl(input);
   const endpoint = url ? `${url.origin}${url.pathname}` : "invalid-url";
   const started = performance.now();
+  const redirect = init?.redirect ?? (input instanceof Request ? input.redirect : "follow");
   console.debug("[http] start", {
     endpoint,
     method: init?.method ?? "GET",
@@ -60,6 +61,8 @@ export const fetchWithProxy = async (
     const response = await tauriFetch(input, {
       ...init,
       headers,
+      // 插件不读取 Request.redirect；授权接口必须保留 302 与 Location。
+      ...(redirect === "manual" || redirect === "error" ? { maxRedirections: 0 } : {}),
       ...(proxy ? { proxy: { all: proxy } } : {}),
     });
     console.info("[http] response", {
@@ -68,6 +71,10 @@ export const fetchWithProxy = async (
       elapsedMs: Math.round(performance.now() - started),
       hasResponseCredentials: Boolean(response.headers.get("set-cookie")),
     });
+    if (redirect === "error" && response.status >= 300 && response.status < 400) {
+      await response.body?.cancel();
+      throw new TypeError("Unexpected redirect");
+    }
     return response;
   } catch (error) {
     console.error(

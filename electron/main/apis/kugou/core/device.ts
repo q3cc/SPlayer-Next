@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { fetchWithProxy } from "@main/utils/proxy";
 import { getKgAppid, getKgClientver } from "./config";
 import {
   decryptKugouDeviceData,
@@ -13,7 +13,7 @@ let registering: Promise<string> | null = null;
 
 const registerDevice = async (): Promise<string> => {
   const session = getSessionCookies("kugou");
-  const guid = session.guid || randomUUID();
+  const guid = session.guid || globalThis.crypto.randomUUID();
   const encrypted = encryptKugouDeviceData({
     availableRamSize: 4983533568,
     availableRomSize: 48114719,
@@ -67,18 +67,21 @@ const registerDevice = async (): Promise<string> => {
   const query = new URLSearchParams(
     Object.entries(params).map(([key, value]) => [key, String(value)]),
   );
-  const response = await fetch(`https://userservice.kugou.com/risk/v2/r_register_dev?${query}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": "Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi",
-      dfid: "-",
-      mid: getDeviceMid(),
-      clienttime: String(clienttime),
+  const response = await fetchWithProxy(
+    `https://userservice.kugou.com/risk/v2/r_register_dev?${query}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Android15-1070-11083-46-0-DiscoveryDRADProtocol-wifi",
+        dfid: "-",
+        mid: getDeviceMid(),
+        clienttime: String(clienttime),
+      },
+      body: encrypted.content,
+      signal: AbortSignal.timeout(8000),
     },
-    body: encrypted.content,
-    signal: AbortSignal.timeout(8000),
-  });
+  );
   if (!response.ok) throw new Error(`KG register device HTTP ${response.status}`);
   const result = decryptKugouDeviceData(
     Buffer.from(await response.arrayBuffer()),
@@ -89,7 +92,7 @@ const registerDevice = async (): Promise<string> => {
   };
   const dfid = result.data?.dfid;
   if (result.status !== 1 || !dfid) throw new Error("KG register device failed");
-  saveSessionCookies("kugou", { ...session, guid, dfid });
+  saveSessionCookies("kugou", { ...getSessionCookies("kugou"), guid, dfid });
   return dfid;
 };
 

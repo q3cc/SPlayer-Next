@@ -4,7 +4,12 @@
  * 通过 music.UserInfo.userInfoServer / GetLoginUserInfo 获取用户信息
  */
 
-import { getQQMusicCookies, getQQMusicUin, qmRequest } from "../core/request";
+import {
+  getQQMusicCookies,
+  getQQMusicUin,
+  qmRequest,
+  refreshQQMusicCredential,
+} from "../core/request";
 import { normalizeQQMusicVip, type QQMusicVipData } from "../core/vip";
 import { coreLog } from "@main/utils/logger";
 import type { QMModule } from "../core/types";
@@ -34,6 +39,7 @@ const fetchCgiProfile = async (): Promise<ProfileCreator | null> => {
     }
   } catch (err) {
     coreLog.warn("[qm-user-detail] GetLoginUserInfo 接口请求失败:", err);
+    throw err;
   }
   return null;
 };
@@ -68,7 +74,20 @@ const userDetail: QMModule = async (_params) => {
     };
   }
 
-  const [creator, vipData] = await Promise.all([fetchCgiProfile(), fetchVipStatus()]);
+  const creator = await fetchCgiProfile().catch(async (error: unknown) => {
+    // 业务拒绝时尝试复用已保存的刷新凭据；网络故障不清除登录态。
+    if (
+      error instanceof Error &&
+      error.message.startsWith("QM API 错误:") &&
+      (await refreshQQMusicCredential())
+    ) {
+      return fetchCgiProfile();
+    }
+    throw error;
+  });
+  if (!creator) return { code: 301, loggedIn: false, message: "QM 登录凭据未通过资料验证" };
+  const vipData = await fetchVipStatus();
+  if (getQQMusicUin() !== uin) throw new Error("QM 账号已切换，忽略旧资料响应");
   const avatarUrl = creator?.headpic?.replace(/^http:\/\//, "https://");
   const vip = normalizeQQMusicVip(vipData);
   return {

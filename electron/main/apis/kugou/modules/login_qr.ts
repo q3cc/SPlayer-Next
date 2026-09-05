@@ -1,3 +1,4 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 import { getKgAppid, getKgClientver } from "../core/config";
 import { getDeviceMid, signatureWebParams } from "../core/crypto";
 import type { KGModule, KGParams } from "../core/types";
@@ -20,7 +21,7 @@ const request = async (path: string, input: Record<string, unknown>): Promise<an
   const query = new URLSearchParams(
     Object.entries(params).map(([key, value]) => [key, String(value)]),
   );
-  const response = await fetch(`${BASE_URL}${path}?${query}`, {
+  const response = await fetchWithProxy(`${BASE_URL}${path}?${query}`, {
     signal: AbortSignal.timeout(8000),
   });
   if (!response.ok) throw new Error(`KG login HTTP ${response.status}`);
@@ -58,6 +59,7 @@ export const loginQrCheck: KGModule = async (params: KGParams) => {
   const avatarUrl =
     data.userpic ?? data.user_pic ?? data.avatar ?? data.avatar_url ?? data.pic ?? data.user_img;
   if (Number(data.status) === 4) {
+    if (!data.token || !data.userid) throw new Error("KG 登录响应缺少 token 或 userid");
     saveSessionCookies("kugou", {
       ...getSessionCookies("kugou"),
       token: String(data.token ?? ""),

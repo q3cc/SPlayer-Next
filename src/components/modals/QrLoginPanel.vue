@@ -12,7 +12,9 @@ const state = ref<QrLoginState>("waiting");
 const nickname = ref("");
 const avatarUrl = ref("");
 const refreshing = ref(false);
-let checking = false;
+const createError = ref(false);
+let generation = 0;
+let checkingGeneration: number | undefined;
 
 const tip = computed(() => {
   if (state.value === "expired") return t("login.qrTipExpired");
@@ -23,6 +25,8 @@ const tip = computed(() => {
 
 const refresh = async (): Promise<void> => {
   if (refreshing.value) return;
+  const current = ++generation;
+  createError.value = false;
   console.info("[login-qr] create-start", { previousState: state.value });
   refreshing.value = true;
   pause();
@@ -32,6 +36,8 @@ const refresh = async (): Promise<void> => {
   avatarUrl.value = "";
   try {
     const result = await props.adapter.create();
+    if (current !== generation || !props.active) return;
+    if (!result.key || !result.content) throw new Error("二维码响应为空");
     key.value = result.key;
     console.info("[login-qr] create-ready");
     if (result.content.startsWith("data:image/") || result.content.startsWith("blob:")) {
@@ -48,15 +54,23 @@ const refresh = async (): Promise<void> => {
     }
     state.value = "waiting";
     if (props.active) resume();
+  } catch (error) {
+    if (current === generation) {
+      createError.value = true;
+      qrUrl.value = "";
+      state.value = "waiting";
+      console.warn("[login-qr] create-error", error);
+    }
   } finally {
-    refreshing.value = false;
+    if (current === generation) refreshing.value = false;
   }
 };
 
 const poll = async (): Promise<void> => {
-  if (!key.value || checking) return;
+  if (!props.active || !key.value || checkingGeneration === generation) return;
+  const current = generation;
   const checkedKey = key.value;
-  checking = true;
+  checkingGeneration = current;
   try {
     const result = await props.adapter.check(checkedKey);
     console.info("[login-qr] poll-result", {
@@ -64,7 +78,7 @@ const poll = async (): Promise<void> => {
       active: props.active,
       stale: key.value !== checkedKey,
     });
-    if (!props.active || key.value !== checkedKey) return;
+    if (!props.active || current !== generation || key.value !== checkedKey) return;
     state.value = result.state;
     nickname.value = result.nickname ?? nickname.value;
     avatarUrl.value = result.avatarUrl ?? avatarUrl.value;
@@ -82,7 +96,7 @@ const poll = async (): Promise<void> => {
     console.warn("[login-qr] poll-error", error);
     // 暂时断网时保留当前二维码，由下一次轮询继续确认。
   } finally {
-    checking = false;
+    if (checkingGeneration === current) checkingGeneration = undefined;
   }
 };
 
@@ -92,12 +106,20 @@ watch(
   () => props.active,
   (active) => {
     if (active) void refresh();
-    else pause();
+    else {
+      generation++;
+      refreshing.value = false;
+      key.value = "";
+      pause();
+    }
   },
   { immediate: true },
 );
 
-onBeforeUnmount(pause);
+onBeforeUnmount(() => {
+  generation++;
+  pause();
+});
 
 defineExpose({ pause, resume, refresh });
 </script>
@@ -117,6 +139,9 @@ defineExpose({ pause, resume, refresh });
           state === 'expired' && 'opacity-40',
         ]"
       />
+      <SButton v-else-if="createError" class="absolute inset-0 m-auto" @click="refresh">
+        {{ t("common.retry") }}
+      </SButton>
       <SLoading v-else class="absolute inset-0 m-auto size-6 text-gray-400" />
       <Transition name="fade">
         <div

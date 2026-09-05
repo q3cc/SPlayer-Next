@@ -31,6 +31,9 @@ const userDetail: KGModule = async () => {
     headers: { "x-router": "usercenter.kugou.com" },
   });
   const data = response.data ?? {};
+  if ((data.userid && String(data.userid) !== session.userid) || !Object.keys(data).length) {
+    return { code: 301, loggedIn: false };
+  }
   const nickname = data.nickname ?? data.username ?? data.user_name ?? session.nickname;
   const avatar = data.pic ?? data.userpic ?? data.user_pic ?? data.avatar ?? session.avatar;
   // vip_type 只反映标准版会员；概念版（含签到领取的会员）查 union_vip
@@ -44,8 +47,12 @@ const userDetail: KGModule = async () => {
     }).catch(() => null);
     isVip = unionResp?.data?.busi_vip?.[0]?.is_vip === 1;
   }
+  const currentSession = getSessionCookies("kugou");
+  if (currentSession.token !== session.token || currentSession.userid !== session.userid) {
+    throw new Error("KG 账号已切换，忽略旧资料响应");
+  }
   const nextSession: Record<string, string> = {
-    ...session,
+    ...currentSession,
     ...(nickname ? { nickname: String(nickname) } : {}),
     ...(avatar ? { avatar: String(avatar).replace(/^http:\/\//, "https://") } : {}),
     ...(data.vip_type !== undefined ? { vip_type: String(data.vip_type) } : {}),

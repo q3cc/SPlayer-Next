@@ -1,10 +1,10 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 /**
  * QM 二维码登录模块
  *
  * 支持 QQ 扫码与微信扫码两种原生扫码登录协议
  */
 
-import { randomUUID } from "node:crypto";
 import { qmRequest, mergeQQMusicCookies } from "../core/request";
 import {
   credentialToSession,
@@ -34,7 +34,7 @@ const extractCookies = (
   const cookieMap: Record<string, string> = { ...existingCookies };
   const rawList = res.headers.getSetCookie?.() ?? [];
   if (rawList.length > 0) {
-    for (const raw of rawList) {
+    for (const raw of rawList.flatMap((header) => header.split(/,\s*(?=[a-zA-Z0-9_-]+=)/))) {
       const first = raw.split(";")[0];
       const eqIdx = first.indexOf("=");
       if (eqIdx > 0) {
@@ -83,17 +83,20 @@ export const login_qr_key: QMModule = async (params: QMParams) => {
       state: "STATE",
       href: "https://y.qq.com/mediastyle/music_v17/src/css/popup_wechat.css#wechat_redirect",
     });
-    const res = await fetch(`https://open.weixin.qq.com/connect/qrconnect?${searchParams}`, {
-      headers: { "User-Agent": WEB_UA },
-      signal: AbortSignal.timeout(8000),
-    });
+    const res = await fetchWithProxy(
+      `https://open.weixin.qq.com/connect/qrconnect?${searchParams}`,
+      {
+        headers: { "User-Agent": WEB_UA },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
     if (!res.ok) throw new Error(`获取微信登录页面失败: HTTP ${res.status}`);
     const html = await res.text();
     const match = /uuid=([^"]+)"/.exec(html) || /uuid=([a-zA-Z0-9_-]+)/.exec(html);
     if (!match) throw new Error("获取微信登录二维码 uuid 失败");
     const uuid = match[1];
 
-    const qrRes = await fetch(`https://open.weixin.qq.com/connect/qrcode/${uuid}`, {
+    const qrRes = await fetchWithProxy(`https://open.weixin.qq.com/connect/qrcode/${uuid}`, {
       headers: {
         Referer: "https://open.weixin.qq.com/connect/qrconnect",
         "User-Agent": WEB_UA,
@@ -114,7 +117,7 @@ export const login_qr_key: QMModule = async (params: QMParams) => {
 
   // 默认 QQ 扫码
   const url = `https://ssl.ptlogin2.qq.com/ptqrshow?appid=716027609&e=2&l=M&s=3&d=72&v=4&t=${Math.random()}&daid=383&pt_3rd_aid=100497308`;
-  const res = await fetch(url, {
+  const res = await fetchWithProxy(url, {
     headers: {
       Referer: "https://xui.ptlogin2.qq.com/",
       "User-Agent": WEB_UA,
@@ -152,7 +155,7 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
       uuid: key,
       _: String(Date.now()),
     });
-    const res = await fetch(`https://lp.open.weixin.qq.com/connect/l/qrconnect?${query}`, {
+    const res = await fetchWithProxy(`https://lp.open.weixin.qq.com/connect/l/qrconnect?${query}`, {
       headers: {
         Referer: "https://open.weixin.qq.com/",
         "User-Agent": WEB_UA,
@@ -218,7 +221,7 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
     pt_3rd_aid: "100497308",
     has_onekey: "1",
   });
-  const res = await fetch(`https://ssl.ptlogin2.qq.com/ptqrlogin?${query}`, {
+  const res = await fetchWithProxy(`https://ssl.ptlogin2.qq.com/ptqrlogin?${query}`, {
     headers: {
       Referer: "https://xui.ptlogin2.qq.com/",
       Cookie: `qrsig=${key};`,
@@ -251,7 +254,7 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
 
     // 请求 check_sig 校验跳转并建立会话 Cookie
     coreLog.info("[qm-login] 正在执行 check_sig 授权...", { jumpUrl });
-    const checkSigRes = await fetch(jumpUrl, {
+    const checkSigRes = await fetchWithProxy(jumpUrl, {
       headers: {
         Referer: "https://xui.ptlogin2.qq.com/",
         Cookie: stringifyCookies(initialCookies),
@@ -288,9 +291,9 @@ export const login_qr_check: QMModule = async (params: QMParams) => {
       openapi: "1010_1030",
       g_tk: String(hash33(p_skey, 5381)),
       auth_time: String(Date.now()),
-      ui: randomUUID(),
+      ui: globalThis.crypto.randomUUID(),
     });
-    const authRes = await fetch("https://graph.qq.com/oauth2.0/authorize", {
+    const authRes = await fetchWithProxy("https://graph.qq.com/oauth2.0/authorize", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

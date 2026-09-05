@@ -97,8 +97,11 @@ const setCookie = async (
     if (!parsed.MUSIC_U) return { ok: false, error: "missing MUSIC_U" };
     (await loadNetease()).mergeNeteaseCookies(parsed);
   } else if (platform === "qqmusic") {
-    if (!parsed.uin && !parsed.wxuin && !parsed.qm_keyst && !parsed.qqmusic_key) {
-      return { ok: false, error: "missing uin or key" };
+    if (
+      !(parsed.qm_str_musicid || parsed.uin || parsed.wxuin || parsed.p_uin) ||
+      !(parsed.qm_keyst || parsed.qqmusic_key)
+    ) {
+      return { ok: false, error: "missing music account ID or music key" };
     }
     (await loadQQMusic()).mergeQQMusicCookies(parsed);
   } else {

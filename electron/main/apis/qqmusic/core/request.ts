@@ -1,3 +1,4 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 /**
  * QM 请求层
  *
@@ -94,7 +95,7 @@ const postRaw = async (
   const cookies = getQQMusicCookies();
   const cookieStr = sessionToCookieHeader(cookies);
 
-  const res = await fetch(QM_API_URL, {
+  const res = await fetchWithProxy(QM_API_URL, {
     method: "POST",
     headers: {
       ...QM_HEADERS,
@@ -230,6 +231,7 @@ interface RefreshCredentialData {
  * @returns 刷新成功（新 key 已写回 cookie）返回 true；失败返回 false
  */
 export const refreshQQMusicCredential = async (): Promise<boolean> => {
+  const generation = sessionGeneration;
   const cookies = getQQMusicCookies();
   const uin = getQQMusicUin();
   const musickey = cookies.qm_keyst || cookies.qqmusic_key;
@@ -310,6 +312,7 @@ export const refreshQQMusicCredential = async (): Promise<boolean> => {
     // 网页 cookie 无此字段，首次刷新后落库供后续刷新复用
     if (data.refresh_key) refreshed.qm_refresh_key = data.refresh_key;
 
+    if (generation !== sessionGeneration) return false;
     mergeQQMusicCookies(refreshed);
     coreLog.info("[qm-refresh] musickey 刷新成功", { uin });
     return true;

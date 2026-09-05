@@ -7,6 +7,17 @@ vi.mock("@tauri-apps/plugin-http", () => ({ fetch: fetchNative }));
 vi.mock("./shims/store", () => ({ store: { get: () => ({ protocol: "off" }) } }));
 
 describe("移动端登录请求头", () => {
+  it("QQ 授权手动跳转保留 302 和 Location", async () => {
+    const response = new Response(null, {
+      status: 302,
+      headers: { Location: "https://y.qq.com/?code=test" },
+    });
+    fetchNative.mockResolvedValueOnce(response);
+    expect(
+      await fetchWithProxy("https://graph.qq.com/oauth2.0/authorize", { redirect: "manual" }),
+    ).toBe(response);
+    expect(fetchNative.mock.calls.at(-1)?.[1].maxRedirections).toBe(0);
+  });
   it("原生插件必须开启自定义请求头支持", () => {
     const cargo = readFileSync("src-tauri/Cargo.toml", "utf8");
     expect(cargo).toMatch(/tauri-plugin-http\s*=\s*\{[^\n]*"unsafe-headers"/);

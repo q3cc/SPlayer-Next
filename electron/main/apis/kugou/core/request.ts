@@ -1,3 +1,4 @@
+import { fetchWithProxy } from "@main/utils/proxy";
 /**
  * KG 请求层
  *
@@ -35,7 +36,7 @@ export const kgRequest = async <T = unknown>(
   url: string,
   options: FetchOptions = {},
 ): Promise<T> => {
-  const res = await fetch(url, {
+  const res = await fetchWithProxy(url, {
     method: "GET",
     headers: options.headers,
     signal: options.signal ?? AbortSignal.timeout(8000),
@@ -137,7 +138,7 @@ export const kgGatewayRequest = async <T = KGRawBody>(
     defaultHeaders["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(fullUrl, {
+  const res = await fetchWithProxy(fullUrl, {
     method,
     headers: { ...defaultHeaders, ...headers },
     body: method === "POST" ? (serializedData as BodyInit) : undefined,
