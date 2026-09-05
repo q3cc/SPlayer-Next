@@ -29,9 +29,24 @@ const line: LyricLine = {
   isDuet: false,
 };
 
+class ArtworkImage {
+  static instances: ArtworkImage[] = [];
+  src = "";
+  decoding = "";
+  naturalWidth = 600;
+  naturalHeight = 600;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  constructor() {
+    ArtworkImage.instances.push(this);
+  }
+}
+
 beforeEach(() => {
   config.enabled = true;
   config.dynamic = true;
+  ArtworkImage.instances = [];
+  vi.stubGlobal("Image", ArtworkImage);
   Object.defineProperty(navigator, "mediaSession", {
     configurable: true,
     value: { metadata: null },
@@ -47,6 +62,65 @@ beforeEach(() => {
   mobileMediaSession.setTrack(null);
   mobileMediaSession.setTrack(track);
   mobileMediaSession.setLyrics({ track, lyric: [line], source: null }, 0);
+});
+
+describe("系统高清封面", () => {
+  const song = {
+    ...track,
+    cover: "https://p1.music.126.net/album.jpg?param=300y300",
+    coverOriginal: "https://p1.music.126.net/album.jpg?param=1024y1024",
+  };
+
+  it("先显示缩略图，600 像素图片加载成功后更新系统封面，不修改曲目", () => {
+    mobileMediaSession.setTrack(song);
+    expect(navigator.mediaSession.metadata?.artwork).toEqual([{ src: song.cover }]);
+    const image = ArtworkImage.instances[0];
+    expect(image.src).toBe("https://p1.music.126.net/album.jpg?param=600y600");
+    image.onload?.();
+    expect(navigator.mediaSession.metadata?.artwork).toEqual([
+      { src: image.src, sizes: "600x600" },
+    ]);
+    expect(song.cover).toContain("300y300");
+    mobileMediaSession.setPosition(1500);
+    mobileMediaSession.setPosition(1600);
+    expect(ArtworkImage.instances).toHaveLength(1);
+  });
+
+  it("加载失败保留缩略图，不随每次歌词更新重复请求", () => {
+    mobileMediaSession.setTrack(song);
+    ArtworkImage.instances[0].onerror?.();
+    mobileMediaSession.setPosition(1500);
+    expect(navigator.mediaSession.metadata?.artwork).toEqual([{ src: song.cover }]);
+    expect(ArtworkImage.instances).toHaveLength(1);
+  });
+
+  it("切歌取消旧图片，迟到的加载结果不能覆盖新歌", () => {
+    mobileMediaSession.setTrack(song);
+    const image = ArtworkImage.instances[0];
+    const lateLoad = image.onload;
+    mobileMediaSession.setTrack({ ...track, id: "next" });
+    expect(image.src).toBe("");
+    lateLoad?.();
+    expect(navigator.mediaSession.metadata?.artwork).toEqual([{ src: track.cover }]);
+  });
+
+  it("关闭系统媒体控制不加载高清封面，重新开启才加载", () => {
+    config.enabled = false;
+    mobileMediaSession.setTrack(song);
+    expect(ArtworkImage.instances).toHaveLength(0);
+    config.enabled = true;
+    mobileMediaSession.refresh();
+    expect(ArtworkImage.instances).toHaveLength(1);
+    config.enabled = false;
+    mobileMediaSession.refresh();
+    expect(ArtworkImage.instances[0].src).toBe("");
+  });
+
+  it("其他来源复用原图地址，不添加网易云尺寸参数", () => {
+    const original = "https://example.com/original.jpg?signature=test";
+    mobileMediaSession.setTrack({ ...track, coverOriginal: original });
+    expect(ArtworkImage.instances[0].src).toBe(original);
+  });
 });
 
 describe("系统正在播放动态歌词", () => {

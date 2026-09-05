@@ -8,15 +8,76 @@ let lyrics: NowPlayingUpdatePayload | null = null;
 let position = 0;
 let offset = 0;
 let lastMetadata: { title: string; artist: string; album: string; cover: string } | null = null;
+let artworkKey = "";
+let artworkCover = "";
+let artworkSize = "";
+let pendingArtwork: HTMLImageElement | null = null;
+
+/** 只保留当前歌曲的一次高清封面加载，切歌后释放旧图片请求。 */
+const clearArtwork = (): void => {
+  if (pendingArtwork) {
+    pendingArtwork.onload = null;
+    pendingArtwork.onerror = null;
+    pendingArtwork.src = "";
+    pendingArtwork = null;
+  }
+  artworkKey = "";
+  artworkCover = "";
+  artworkSize = "";
+};
+
+/** 复用曲目的原图地址，网易云使用 CDN 的 600 像素版本，失败仍显示原缩略图。 */
+const prepareArtwork = (value: Track): void => {
+  let candidate = value.coverOriginal || value.cover || "";
+  if (value.source === "netease" && candidate) {
+    try {
+      const url = new URL(candidate);
+      if (/^https?:$/.test(url.protocol) && /(^|\.)music\.126\.net$/.test(url.hostname)) {
+        url.searchParams.set("param", "600y600");
+        candidate = url.href;
+      }
+    } catch {
+      // 非远程封面继续使用原始地址，不猜测服务端的缩放参数。
+    }
+  }
+  const key = JSON.stringify([value.source, value.id, value.cover, candidate]);
+  if (key === artworkKey) return;
+  clearArtwork();
+  artworkKey = key;
+  artworkCover = value.cover || "";
+  if (!candidate || candidate === artworkCover) return;
+  const image = new Image();
+  pendingArtwork = image;
+  image.decoding = "async";
+  image.onload = () => {
+    if (pendingArtwork !== image) return;
+    artworkCover = candidate;
+    artworkSize = `${image.naturalWidth}x${image.naturalHeight}`;
+    image.onload = null;
+    image.onerror = null;
+    pendingArtwork = null;
+    refresh();
+  };
+  image.onerror = () => {
+    if (pendingArtwork !== image) return;
+    image.onload = null;
+    image.onerror = null;
+    pendingArtwork = null;
+    console.warn("[media-session] 高清封面加载失败，保留缩略图");
+  };
+  image.src = candidate;
+};
 
 /** 复用公共解析结果与音频时间事件，只在显示内容变化时更新系统卡片。 */
 const refresh = (): void => {
   if (!("mediaSession" in navigator)) return;
   if (!track || !store.get("media.systemMediaControls")) {
+    clearArtwork();
     navigator.mediaSession.metadata = null;
     lastMetadata = null;
     return;
   }
+  prepareArtwork(track);
   const artist = track.artists.map((item) => item.name).join(" / ");
   let lyric = "";
   if (
@@ -44,7 +105,7 @@ const refresh = (): void => {
     title: lyric || track.title,
     artist: lyric ? [track.title, artist].filter(Boolean).join(" - ") : artist,
     album: lyric ? "" : (track.album?.name ?? ""),
-    cover: track.cover ?? "",
+    cover: artworkCover,
   };
   if (
     lastMetadata?.title === next.title &&
@@ -57,7 +118,9 @@ const refresh = (): void => {
     title: next.title,
     artist: next.artist,
     album: next.album,
-    artwork: next.cover ? [{ src: next.cover }] : [],
+    artwork: next.cover
+      ? [{ src: next.cover, ...(artworkSize ? { sizes: artworkSize } : {}) }]
+      : [],
   });
   lastMetadata = next;
 };
