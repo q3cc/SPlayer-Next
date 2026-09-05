@@ -16,6 +16,8 @@ on:
       - "index.html"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
       - "vite.config.ts"
       - "uno.config.ts"
 

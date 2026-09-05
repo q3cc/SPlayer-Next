@@ -22,3 +22,6 @@ minimumReleaseAgeExclude:
 
 overrides:
   node-abi: ^4.33.0
+
+patchedDependencies:
+  "@tauri-apps/plugin-http@2.6.0": patches/@tauri-apps__plugin-http@2.6.0.patch
